@@ -18,6 +18,24 @@ the macOS build is set up but not tried yet.
 - Dictionaries: folders to look in, each dictionary on or off, the order articles appear in.
 - Light and dark, following the system; one column in a narrow window.
 - `kosha-app WORD` opens on that word; with Kosha already open, the word goes to that window.
+- Settings (Ctrl+,): appearance (system, light, dark), text size, secondary text, playing the
+  pronunciation, dictionaries, study defaults, where your data is, the keyboard shortcuts.
+
+## Word cards
+
+For learning a language: **Save** on an article (or Ctrl+S, into the folder used last) keeps the
+word as a card, with a copy of its article, so it stays readable even if the dictionary goes.
+
+- Folders in a tree, as deep as you like: create, rename, nest, move (drag a folder onto another),
+  delete (keeping the cards or with them). Drag cards onto a folder to move them.
+- Each card: the article, your own note, its folder, "I know it", Look up again.
+- **Study**: the cards of a folder one at a time, large. Space flips, ← → move, 1 "Again",
+  2 "Got it" (counted on the card). Word first or meaning first (the word, its transcription and
+  sound hidden, so you recall it), shuffle, only the cards not known yet; at the end, repeat
+  just the ones you missed.
+- Saved in one file, `cards.json` in Kosha's data folder (`~/.local/share/kosha` on Linux,
+  `~/Library/Application Support/kosha` on macOS), written safely after every change; if it
+  can't be read, Kosha never writes over it.
 
 ## What it reads
 
@@ -65,7 +83,8 @@ cargo test
 python3 tools/make-samples.py        # rewrites the sample dictionaries in samples/
 ```
 
-The window is plain HTML, CSS and JavaScript in `ui/` (no framework, no build step).
+The window is plain HTML, CSS and JavaScript modules in `ui/` (no framework, no build step); it
+is built into the program, so rebuild after changing it.
 
 On Linux, `bash tools/install-linux.sh` builds both and installs them for your user only
 (`~/.local/bin/kosha-app`, `~/.local/bin/kosha`, a launcher entry and the icon; `--remove` takes

@@ -6,6 +6,8 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod cards;
+
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 
@@ -17,8 +19,8 @@ use tauri::http::{header, Response, StatusCode};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 #[derive(Default)]
-struct AppState {
-    library: RwLock<Option<Library>>,
+pub(crate) struct AppState {
+    pub(crate) library: RwLock<Option<Library>>,
     settings: Mutex<Settings>,
     /// the word Kosha was started with, taken once by the page
     first_word: Mutex<Option<String>>,
@@ -26,7 +28,7 @@ struct AppState {
     generation: Mutex<u64>,
 }
 
-type Shared = Arc<AppState>;
+pub(crate) type Shared = Arc<AppState>;
 
 #[derive(Serialize)]
 struct DictRow {
@@ -42,7 +44,7 @@ struct LibraryView {
     failed: Vec<Failed>,
 }
 
-fn resource_url(dict: &str, name: &str) -> String {
+pub(crate) fn resource_url(dict: &str, name: &str) -> String {
     let name = utf8_percent_encode(name, NON_ALPHANUMERIC);
     if cfg!(windows) {
         format!("http://kosha.localhost/{dict}/{name}")
@@ -108,6 +110,28 @@ fn library(state: State<Shared>) -> LibraryView {
             .map(|f| f.to_string_lossy().into_owned())
             .collect(),
         failed: lib.as_ref().map(|l| l.failed.clone()).unwrap_or_default(),
+    }
+}
+
+#[derive(Serialize)]
+struct About {
+    version: &'static str,
+    settings: String,
+    cards: String,
+    cache: String,
+}
+
+#[tauri::command]
+fn about() -> About {
+    About {
+        version: env!("CARGO_PKG_VERSION"),
+        settings: Settings::path().to_string_lossy().into_owned(),
+        cards: kosha_core::cards::default_path()
+            .to_string_lossy()
+            .into_owned(),
+        cache: kosha_core::library::cache_dir()
+            .to_string_lossy()
+            .into_owned(),
     }
 }
 
@@ -237,6 +261,7 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(state.clone())
+        .manage(cards::Cards::load())
         .register_uri_scheme_protocol("kosha", |ctx, request| {
             let state = ctx.app_handle().state::<Shared>();
             let path = request.uri().path().trim_start_matches('/');
@@ -264,11 +289,21 @@ fn main() {
             lookup,
             library,
             first_word,
+            about,
             add_folder,
             remove_folder,
             rescan,
             set_enabled,
-            move_dict
+            move_dict,
+            cards::cards,
+            cards::card_add,
+            cards::card_update,
+            cards::card_review,
+            cards::card_delete,
+            cards::folder_add,
+            cards::folder_rename,
+            cards::folder_move,
+            cards::folder_delete
         ])
         .setup(move |app| {
             reload(app.handle(), &state);

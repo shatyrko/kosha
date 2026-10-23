@@ -7,25 +7,56 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="app">
+  <div id="app" data-mode="dictionary">
     <aside id="side">
-      <div class="search">
-        <svg class="glass" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
-        <input id="q" type="search" placeholder="Search" autocomplete="off" spellcheck="false" autofocus aria-label="Search the dictionaries">
-        <button id="clear" class="icon-btn" title="Clear (Esc)" aria-label="Clear" hidden>
-          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      <div class="tabs" role="tablist" aria-label="Kosha">
+        <button id="tab-dict" class="tab on" role="tab" aria-selected="true" title="Dictionary (Ctrl+1)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z"/></svg>
+          Dictionary
+        </button>
+        <button id="tab-cards" class="tab" role="tab" aria-selected="false" title="Word cards (Ctrl+2)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10A1.5 1.5 0 0 1 18.5 6v12A1.5 1.5 0 0 1 17 19.5H7A1.5 1.5 0 0 1 5.5 18V6A1.5 1.5 0 0 1 7 4.5zM9 9h6M9 12.5h6M9 16h3.5"/></svg>
+          Cards <span id="cards-badge" class="badge"></span>
         </button>
       </div>
-      <ul id="results" role="listbox" aria-label="Headwords"></ul>
+
+      <!-- dictionary: search and headwords -->
+      <div class="side-dict">
+        <div class="search">
+          <svg class="glass" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+          <input id="q" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-label="Search the dictionaries">
+          <button id="clear" class="icon-btn" title="Clear (Esc)" aria-label="Clear" hidden>
+            <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <ul id="results" role="listbox" aria-label="Headwords"></ul>
+      </div>
+
+      <!-- cards: the folder tree -->
+      <div class="side-cards">
+        <div class="search">
+          <svg class="glass" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+          <input id="card-filter" type="search" placeholder="Filter cards" autocomplete="off" spellcheck="false" aria-label="Filter the cards">
+        </div>
+        <ul id="folder-tree" aria-label="Folders"></ul>
+        <div class="tree-foot">
+          <button id="new-folder" class="text-btn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            New folder
+          </button>
+        </div>
+      </div>
+
       <div id="side-foot">
-        <button id="open-settings" class="text-btn" title="Dictionaries and folders">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z"/></svg>
-          <span id="dict-count">Dictionaries</span>
+        <button id="open-settings" class="icon-btn" title="Settings (Ctrl+,)" aria-label="Settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
         </button>
+        <button id="dict-status" class="text-btn" title="Dictionaries">Opening dictionaries…</button>
       </div>
     </aside>
 
-    <main id="main">
+    <!-- dictionary: articles -->
+    <main id="main" class="main-dict">
       <header id="bar">
         <button id="back-list" class="icon-btn narrow-only" title="Results" aria-label="Back to results">
           <svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></svg>
@@ -41,34 +72,37 @@
       <div id="articles" tabindex="-1"></div>
     </main>
 
-    <section id="settings" hidden aria-label="Dictionaries">
-      <header class="settings-head">
-        <h2>Dictionaries</h2>
-        <button id="close-settings" class="icon-btn" title="Close (Esc)" aria-label="Close">
-          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    <!-- cards: the cards of the chosen folder -->
+    <main id="cards-main" class="main-cards">
+      <header class="cards-bar">
+        <div class="grow">
+          <h1 id="cards-title">All cards</h1>
+          <div id="cards-count" class="sub"></div>
+        </div>
+        <label id="deep-label" class="check small" title="Also the cards of the folders inside">
+          <input id="deep" type="checkbox" checked> With sub-folders
+        </label>
+        <button id="folder-more" class="icon-btn" title="Folder actions" aria-label="Folder actions">
+          <svg viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>
+        </button>
+        <button id="study" class="btn primary">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+          Study
         </button>
       </header>
-      <div class="settings-body">
-        <h3>Folders</h3>
-        <p class="hint">Kosha finds <code>.dsl</code> and <code>.dsl.dz</code> dictionaries in these folders and their sub-folders, and reads them where they are.</p>
-        <ul id="folders" class="rows"></ul>
-        <div class="row-actions">
-          <button id="add-folder" class="btn primary">Add folder…</button>
-          <button id="rescan" class="btn">Look again</button>
-        </div>
-        <h3>Dictionaries <span id="loading" class="spinner" hidden></span></h3>
-        <p class="hint">Articles are shown in this order. Switch a dictionary off to leave it out of search.</p>
-        <ul id="dicts" class="rows"></ul>
-        <div id="failed"></div>
-        <h3>Reading</h3>
-        <label class="check"><input id="show-secondary" type="checkbox" checked> Show secondary text (shown smaller in articles)</label>
-        <div class="size-row">Text size
-          <button id="smaller" class="btn small" title="Ctrl+−">A−</button>
-          <button id="larger" class="btn small" title="Ctrl+=">A+</button>
-        </div>
+      <div id="card-grid"></div>
+    </main>
+
+    <section id="settings" hidden aria-label="Settings">
+      <nav class="settings-nav" aria-label="Settings sections"></nav>
+      <div class="settings-main">
+        <button id="close-settings" class="icon-btn close-x" title="Close (Esc)" aria-label="Close">
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+        <div class="settings-body"></div>
       </div>
     </section>
   </div>
-  <script src="app.js"></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>

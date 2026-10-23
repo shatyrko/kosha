@@ -318,6 +318,25 @@ impl Library {
         out
     }
 
+    /// One dictionary's articles for this word (switched-off dictionaries included).
+    pub fn lookup_in(
+        &self,
+        dict: &str,
+        word: &str,
+        resource_url: &dyn Fn(&str, &str) -> String,
+    ) -> Vec<Article> {
+        let Some(d) = self.dict(dict) else {
+            return Vec::new();
+        };
+        let mut seen = HashSet::new();
+        d.index
+            .exact(&normalize::key(word))
+            .iter()
+            .filter(|w| seen.insert(w.article))
+            .filter_map(|w| d.article(w.article, resource_url).ok())
+            .collect()
+    }
+
     pub fn resource(&self, dict: &str, name: &str) -> Option<Vec<u8>> {
         self.dict(dict)?.resource(name)
     }
