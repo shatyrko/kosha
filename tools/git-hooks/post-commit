@@ -1,0 +1,18 @@
+#!/bin/sh
+# Push every commit to GitHub (shatyrko/kosha) right after it is made.
+# Runs in the background so committing stays instant; output goes to .git/auto-push.log.
+# Active through `git config core.hooksPath tools/git-hooks`.
+# Skip once: SKIP_PUSH=1 git commit ...
+[ -n "$SKIP_PUSH" ] && exit 0
+git remote get-url origin >/dev/null 2>&1 || exit 0
+log="$(git rev-parse --git-dir)/auto-push.log"
+(
+    printf '%s push %s\n' "$(date '+%F %T')" "$(git rev-parse --short HEAD)"
+    if git push -q origin HEAD 2>&1; then echo "  ok"
+    else
+        echo "  FAILED (push by hand: git push)"
+        # a failed push used to stay unnoticed in this log for days (2026-10-20): say it on screen
+        command -v notify-send >/dev/null && notify-send -u critical -a git "Push failed: $(basename "$(git rev-parse --show-toplevel)")" \
+            "The commit is only on this computer. In the repository: git pull --rebase && git push"
+    fi
+) >>"$log" 2>&1 &
