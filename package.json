@@ -1,0 +1,14 @@
+{
+  "name": "kosha",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Kosha dictionary app (the Tauri command-line tool only; the window needs no build step)",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.4"
+  }
+}

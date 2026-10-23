@@ -165,7 +165,10 @@ impl Dictionary {
         let headwords: Vec<String> = heads.iter().map(|h| headword::parse(h).display).collect();
         let first = headwords.first().cloned().unwrap_or_default();
         // `~` stands for the headword without its unsorted parts
-        let tilde = heads.first().map(|h| strip_unsorted(h)).unwrap_or_default();
+        let tilde = heads
+            .first()
+            .map(|h| headword::parse(h).tilde)
+            .unwrap_or_default();
         let id = self.id.clone();
         let url = move |name: &str| resource_url(&id, name);
         let ctx = RenderCtx {
@@ -207,30 +210,6 @@ impl Dictionary {
             }
         }
     }
-}
-
-fn strip_unsorted(h: &str) -> String {
-    let mut out = String::new();
-    let mut depth = 0usize;
-    let mut esc = false;
-    for c in h.chars() {
-        if esc {
-            if depth == 0 {
-                out.push(c);
-            }
-            esc = false;
-            continue;
-        }
-        match c {
-            '\\' => esc = true,
-            '{' => depth += 1,
-            '}' => depth = depth.saturating_sub(1),
-            '(' | ')' if depth == 0 => {}
-            c if depth == 0 => out.push(c),
-            _ => {}
-        }
-    }
-    out.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 fn open_resources(dsl_path: &Path, bare: &Path) -> Resources {

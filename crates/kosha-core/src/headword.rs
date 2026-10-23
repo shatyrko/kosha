@@ -16,6 +16,8 @@ pub struct Headword {
     pub display: String,
     /// every searchable form: (normalized key, how that form is shown), without duplicate keys
     pub forms: Vec<(String, String)>,
+    /// what `~` in the article stands for: no unsorted parts, no optional parts
+    pub tilde: String,
 }
 
 impl Headword {
@@ -108,9 +110,15 @@ pub fn parse(raw: &str) -> Headword {
             forms.push((k, tidy(&s)));
         }
     }
+    let tilde: String = parts
+        .iter()
+        .filter(|p| !p.optional)
+        .map(|p| p.key.as_str())
+        .collect();
     Headword {
         display: tidy(&display),
         forms,
+        tilde: tidy(&tilde),
     }
 }
 
@@ -147,6 +155,8 @@ mod tests {
     fn optional_parts() {
         let h = parse("bring (in)");
         assert_eq!(h.display, "bring (in)");
+        assert_eq!(h.tilde, "bring");
+        assert_eq!(parse("{to }run").tilde, "run");
         assert_eq!(
             forms("bring (in)"),
             vec![("bring", "bring"), ("bring in", "bring in")]

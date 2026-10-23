@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kosha</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <aside id="side">
+      <div class="search">
+        <svg class="glass" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+        <input id="q" type="search" placeholder="Search" autocomplete="off" spellcheck="false" autofocus aria-label="Search the dictionaries">
+        <button id="clear" class="icon-btn" title="Clear (Esc)" aria-label="Clear" hidden>
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <ul id="results" role="listbox" aria-label="Headwords"></ul>
+      <div id="side-foot">
+        <button id="open-settings" class="text-btn" title="Dictionaries and folders">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z"/></svg>
+          <span id="dict-count">Dictionaries</span>
+        </button>
+      </div>
+    </aside>
+
+    <main id="main">
+      <header id="bar">
+        <button id="back-list" class="icon-btn narrow-only" title="Results" aria-label="Back to results">
+          <svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></svg>
+        </button>
+        <button id="back" class="icon-btn" title="Back (Alt+Left)" aria-label="Back" disabled>
+          <svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></svg>
+        </button>
+        <button id="forward" class="icon-btn" title="Forward (Alt+Right)" aria-label="Forward" disabled>
+          <svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>
+        </button>
+        <h1 id="word"></h1>
+      </header>
+      <div id="articles" tabindex="-1"></div>
+    </main>
+
+    <section id="settings" hidden aria-label="Dictionaries">
+      <header class="settings-head">
+        <h2>Dictionaries</h2>
+        <button id="close-settings" class="icon-btn" title="Close (Esc)" aria-label="Close">
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+      <div class="settings-body">
+        <h3>Folders</h3>
+        <p class="hint">Kosha finds <code>.dsl</code> and <code>.dsl.dz</code> dictionaries in these folders and their sub-folders, and reads them where they are.</p>
+        <ul id="folders" class="rows"></ul>
+        <div class="row-actions">
+          <button id="add-folder" class="btn primary">Add folder…</button>
+          <button id="rescan" class="btn">Look again</button>
+        </div>
+        <h3>Dictionaries <span id="loading" class="spinner" hidden></span></h3>
+        <p class="hint">Articles are shown in this order. Switch a dictionary off to leave it out of search.</p>
+        <ul id="dicts" class="rows"></ul>
+        <div id="failed"></div>
+        <h3>Reading</h3>
+        <label class="check"><input id="show-secondary" type="checkbox" checked> Show secondary text (shown smaller in articles)</label>
+        <div class="size-row">Text size
+          <button id="smaller" class="btn small" title="Ctrl+−">A−</button>
+          <button id="larger" class="btn small" title="Ctrl+=">A+</button>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -154,6 +154,17 @@ impl Library {
                 }),
             }
         }
+        let mut lib = Library {
+            dicts,
+            failed,
+            disabled: HashSet::new(),
+        };
+        lib.apply(settings);
+        lib
+    }
+
+    /// Take over the order and the switched-off dictionaries of the settings.
+    pub fn apply(&mut self, settings: &Settings) {
         let rank = |id: &str| {
             settings
                 .order
@@ -161,16 +172,17 @@ impl Library {
                 .position(|o| o == id)
                 .unwrap_or(usize::MAX)
         };
-        dicts.sort_by(|a, b| {
+        self.dicts.sort_by(|a, b| {
             rank(&a.id)
                 .cmp(&rank(&b.id))
                 .then_with(|| a.name().to_lowercase().cmp(&b.name().to_lowercase()))
         });
-        Library {
-            dicts,
-            failed,
-            disabled: settings.disabled.iter().cloned().collect(),
-        }
+        self.disabled = settings.disabled.iter().cloned().collect();
+    }
+
+    /// The ids in the order shown.
+    pub fn order(&self) -> Vec<String> {
+        self.dicts.iter().map(|d| d.id.clone()).collect()
     }
 
     /// The dictionaries of the saved settings.

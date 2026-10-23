@@ -48,7 +48,8 @@ go{es}
 look (up)
 	[m1][p]v[/p] [trn]смотреть[/trn]
 	[m2][b]look up[/b] [trn]искать ([i]в словаре[/i])[/trn]
-	[m3][ex]~ a word in Kosha — посмотреть слово в Kosha[/ex]
+	[m3][ex]~ up a word in Kosha — посмотреть слово в Kosha[/ex]
+	[m3][ex]^~ out! — Осторожно![/ex]
 colour
 color
 	[m1][p]n[/p] [trn]цвет[/trn]; [p]v[/p] [trn]красить[/trn]
@@ -125,7 +126,8 @@ def png(w=96, h=64):
         for x in range(w):
             cx, cy, r = w / 2, h / 2 + 6, 24
             inside = (x - cx) ** 2 + (y - cy) ** 2 <= r * r
-            ear = y < cy and abs(x - (cx - 14)) + (y - 8) * 0.9 < 10 or y < cy and abs(x - (cx + 14)) + (y - 8) * 0.9 < 10
+            # ears: triangles with the tip at the top, widening down to the head
+            ear = 6 <= y < cy and (abs(x - (cx - 15)) < (y - 6) * 0.55 or abs(x - (cx + 15)) < (y - 6) * 0.55)
             eye = (x - (cx - 9)) ** 2 + (y - cy + 2) ** 2 <= 9 or (x - (cx + 9)) ** 2 + (y - cy + 2) ** 2 <= 9
             if eye and inside:
                 row += bytes([250, 210, 80, 255])

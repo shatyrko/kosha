@@ -5,7 +5,19 @@ ABBYY Lingvo DSL files (plain `.dsl` or compressed `.dsl.dz`) are opened in plac
 converted or copied. Kosha scans a file once to index its headwords, keeps that small index in
 its cache folder, and reads an article straight from the original file when you look a word up.
 
-Status: early. The engine and the command-line tool work; the app window (Tauri) is next.
+Status: early, but usable: the app window, the engine and the command-line tool work on Linux;
+the macOS build is set up but not tried yet.
+
+## The app
+
+- Search on the left, the articles of every dictionary on the right; the top word's articles show
+  while you type, ↑/↓ move through the list, Enter keeps a word in the history.
+- Cross-references open the word they point to; Back / Forward (Alt+←/→, ⌘[ / ⌘]).
+- Sounds play from the dictionary, pictures are shown; labels (`n`, `v`, …) explain themselves on
+  hover; secondary text can be hidden; Ctrl+= / Ctrl+− change the text size.
+- Dictionaries: folders to look in, each dictionary on or off, the order articles appear in.
+- Light and dark, following the system; one column in a narrow window.
+- `kosha-app WORD` opens on that word; with Kosha already open, the word goes to that window.
 
 ## What it reads
 
@@ -42,13 +54,18 @@ kosha search app                     # headwords starting with "app" (--json, --
 
 ## Building
 
-Rust 1.80 or newer.
+Rust 1.80 or newer; for the app also Node.js (only for the Tauri command-line tool) and, on
+Linux, WebKitGTK 4.1 (`webkit2gtk-4.1`).
 
 ```
 cargo build --release -p kosha-cli   # target/release/kosha
+npm install && npx tauri build       # the app and its packages (deb, rpm, AppImage / app, dmg)
+cargo build --release -p kosha-app   # or just the app's program: target/release/kosha-app
 cargo test
 python3 tools/make-samples.py        # rewrites the sample dictionaries in samples/
 ```
+
+The window is plain HTML, CSS and JavaScript in `ui/` (no framework, no build step).
 
 `samples/` has two small dictionaries made up for Kosha (English–Russian in UTF-16 with
 abbreviations, a sound and a picture; Russian–English in UTF-8, dictzip-compressed), free to use.

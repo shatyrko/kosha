@@ -4,7 +4,8 @@
 //! (indent of the line), `[trn] [!trs]` (translation), `[ex]` (example), `[com]` (comment),
 //! `[p]` (label, expanded from the dictionary's `_abrv.dsl`), `[t]` (transcription), `[lang ...]`,
 //! `[s]file[/s]` (sound or picture), `[url]link[/url]`, `[ref]word[/ref]` and `<<word>>`
-//! (cross-reference), `[br]`. `~` is the headword, `\x` the character x. Unknown tags are dropped.
+//! (cross-reference), `[br]`. `~` is the headword (`^~` with the case of its first letter changed),
+//! `\x` the character x. Unknown tags are dropped.
 //! DSL files often close tags out of order; the HTML is always properly nested.
 
 use std::collections::HashMap;
@@ -42,6 +43,19 @@ fn parse_line(line: &str, headword: &str) -> (u8, Vec<Node>) {
             '~' => {
                 text.push_str(headword);
                 i += 1;
+            }
+            // `^~`: the headword with the case of its first letter changed
+            '^' if chars.get(i + 1) == Some(&'~') => {
+                let mut hw = headword.chars();
+                if let Some(f) = hw.next() {
+                    if f.is_uppercase() {
+                        text.extend(f.to_lowercase());
+                    } else {
+                        text.extend(f.to_uppercase());
+                    }
+                    text.push_str(hw.as_str());
+                }
+                i += 2;
             }
             '<' if chars.get(i + 1) == Some(&'<') => {
                 if let Some(end) = find(&chars, i + 2, &['>', '>']) {
