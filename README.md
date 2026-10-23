@@ -67,6 +67,10 @@ python3 tools/make-samples.py        # rewrites the sample dictionaries in sampl
 
 The window is plain HTML, CSS and JavaScript in `ui/` (no framework, no build step).
 
+On Linux, `bash tools/install-linux.sh` builds both and installs them for your user only
+(`~/.local/bin/kosha-app`, `~/.local/bin/kosha`, a launcher entry and the icon; `--remove` takes
+them out again).
+
 `samples/` has two small dictionaries made up for Kosha (English–Russian in UTF-16 with
 abbreviations, a sound and a picture; Russian–English in UTF-8, dictzip-compressed), free to use.
 
