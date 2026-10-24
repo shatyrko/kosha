@@ -463,7 +463,11 @@ pub fn to_html(entry: &str) -> String {
                         continue;
                     }
                     "div" | "p" => (
-                        format!("<div class=\"m m{}\">", level(&attrs).unwrap_or(1)),
+                        // Lingvo's L0 is the headword line, L1 the first indent: Kosha's m1, m2, …
+                        format!(
+                            "<div class=\"m m{}\">",
+                            level(&attrs).map_or(1, |l| (l + 1).min(9))
+                        ),
                         "</div>",
                     ),
                     "b" | "strong" => ("<b>".into(), "</b>"),
@@ -573,8 +577,8 @@ fn tidy_end(mut html: String) -> String {
         let t = html.trim_end();
         let cut = [
             "<br>",
-            "<div class=\"m m0\"></div>",
             "<div class=\"m m1\"></div>",
+            "<div class=\"m m2\"></div>",
         ]
         .iter()
         .find(|e| t.ends_with(*e))
@@ -620,9 +624,7 @@ pub fn to_text(entry: &str) -> String {
                 } else if name == "br" || name == "div" || name == "p" {
                     flush(&mut cur, &mut lines);
                     if name != "br" {
-                        cur.push_str(
-                            &"  ".repeat(level(&attrs).unwrap_or(1).saturating_sub(1) as usize),
-                        );
+                        cur.push_str(&"  ".repeat(level(&attrs).unwrap_or(0) as usize));
                     }
                 }
             }
@@ -665,11 +667,11 @@ mod tests {
         assert_eq!(title(ENTRY), "stamp it");
         let h = to_html(ENTRY);
         assert!(
-            h.starts_with("<div class=\"m m0\"><b>stamp it</b></div>"),
+            h.starts_with("<div class=\"m m1\"><b>stamp it</b></div>"),
             "{h}"
         );
         assert!(h.contains("<abbr class=\"p\" title=\"сокращение от\">сокр. от </abbr>1) штамп &amp; <i>печать</i>"), "{h}");
-        assert!(h.contains("<div class=\"m m2\"><span class=\"sec\">- <a class=\"ref\" href=\"#\" data-word=\"time stamp\">time stamp </a></span></div>"), "{h}");
+        assert!(h.contains("<div class=\"m m3\"><span class=\"sec\">- <a class=\"ref\" href=\"#\" data-word=\"time stamp\">time stamp </a></span></div>"), "{h}");
         assert!(
             h.contains("<span style=\"color:red\">red</span> <span>no</span>"),
             "{h}"
@@ -690,7 +692,7 @@ mod tests {
     fn text() {
         assert_eq!(
             to_text(ENTRY),
-            "stamp it\nсокр. от 1) штамп & печать\n  - time stamp\nred no"
+            "stamp it\n  сокр. от 1) штамп & печать\n    - time stamp\n  red no"
         );
     }
 

@@ -340,7 +340,10 @@ function updateNav() {
 
 /** The dictionaries were opened (or changed): show what is pending or refresh what is shown. */
 export function libraryChanged() {
-  if (!store.ready) return;
+  if (!store.ready) {
+    if (!state.shown) showWelcome(); // "Opening the dictionaries…"
+    return;
+  }
   if (state.pending) {
     const w = state.pending;
     state.pending = null;
