@@ -99,6 +99,12 @@ export async function runSearch() {
     // not in the dictionaries: say so, and after a pause in typing, what is online
     showNotFound(text, hits.slice(0, 8));
     addOnline(text, token, 700);
+    // and if it stays there (no more typing) a moment after the online results came, it was
+    // the search: into the history, as if Enter had been pressed (fragments typed on the way
+    // never stay this long)
+    setTimeout(() => {
+      if (token === state.token && q.value === text && articles.querySelector(".online")) remember(text.trim());
+    }, 700 + 2000);
   }
 }
 

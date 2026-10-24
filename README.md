@@ -26,7 +26,8 @@ the macOS build is set up but not tried yet.
 
 ## Search history and online sources
 
-- **History**: the words you open, newest first, under the search field while it is empty (each
+- **History**: the words you open, newest first, under the search field while it is empty (also
+  a phrase no dictionary has whose online results you stay on for a moment; each
   once; × removes one, "Clear" all; Settings → General can switch it off). Saved in
   `history.json` next to the cards.
 - **Online** (Settings → Online, each can be switched off; what you look up is then sent there):
