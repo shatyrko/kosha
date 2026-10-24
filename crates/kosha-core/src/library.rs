@@ -20,6 +20,37 @@ pub struct Settings {
     pub disabled: Vec<String>,
     /// dictionary ids in the order articles are shown (others follow, by name)
     pub order: Vec<String>,
+    /// online sources shown after the dictionaries (the app only; the engine stays offline)
+    pub online: Online,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(default)]
+pub struct Online {
+    pub wikipedia: bool,
+    pub google: bool,
+    pub deepl: bool,
+    /// DeepL API key (free keys end in ":fx")
+    pub deepl_key: String,
+    /// Google Cloud Translation API key
+    pub google_key: String,
+    /// your language and the one you learn (ISO codes): translations go from one to the other
+    pub native: String,
+    pub learning: String,
+}
+
+impl Default for Online {
+    fn default() -> Self {
+        Online {
+            wikipedia: true,
+            google: true,
+            deepl: true,
+            deepl_key: String::new(),
+            google_key: String::new(),
+            native: "ru".into(),
+            learning: "en".into(),
+        }
+    }
 }
 
 pub fn config_dir() -> PathBuf {

@@ -1,6 +1,8 @@
 // Settings: General (look and reading), Dictionaries (folders, on/off, order), Cards, About.
 
 import { $, el, icon, invoke, plural, prefs, attempt, toast } from "./util.js";
+import { draggable } from "./drag.js";
+import { loadOnlineSettings, clearHistory, runSearch } from "./dictionary.js";
 import { store, on, loadLibrary } from "./store.js";
 
 let section = "general";
@@ -53,6 +55,7 @@ const SECTIONS = [
   ["general", "General", "gear"],
   ["dictionaries", "Dictionaries", "book"],
   ["cards", "Cards", "stack"],
+  ["online", "Online", "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"],
   ["about", "About", "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5M12 8h.01"],
 ];
 
@@ -62,7 +65,7 @@ function render() {
     el("button", { class: id === section ? "on" : "", onclick: () => { section = id; render(); if (id === "dictionaries") loadLibrary(); } },
       icon(ic, 18), el("span", { text: label }))));
   const body = $("settings").querySelector(".settings-body");
-  const build = { general, dictionaries, cards, about }[section];
+  const build = { general, dictionaries, cards, online, about }[section];
   body.replaceChildren(el("h2", { text: SECTIONS.find((s) => s[0] === section)[1] }), ...build().filter(Boolean));
 }
 
@@ -106,6 +109,11 @@ function general() {
     el("h3", { text: "Reading" }),
     checkbox("Show secondary text", "secondary", true, applyLook, "Parts a dictionary marks as less important, shown smaller and dimmer."),
     checkbox("Play the pronunciation when an article opens", "autoplay", false, null, "For dictionaries with sound files."),
+    el("h3", { text: "Search history" }),
+    checkbox("Keep a search history", "history", true, () => runSearch(),
+      "The words you open, newest first, shown under the search field while it is empty."),
+    el("div", { class: "row-actions" },
+      el("button", { class: "btn", text: "Clear the history", onclick: async () => { await clearHistory(); toast("Search history cleared"); } })),
   ];
 }
 
@@ -152,7 +160,7 @@ function dictionaries() {
       await loadLibrary();
       onChange();
     });
-    dragRow(li, handle);
+    dragRow(li, handle, info.name);
     return li;
   })));
   for (const f of store.failed) out.push(el("div", { class: "err", text: `Can't read ${f.path}: ${f.error}` }));
@@ -161,41 +169,30 @@ function dictionaries() {
 
 // ── dragging a dictionary to another place in the list ───────
 // Only from the grip, so the switch and the arrows keep working as they are.
-const DRAG = "application/x-kosha-dict";
-
-function dragRow(li, handle) {
-  handle.addEventListener("pointerdown", () => { li.draggable = true; });
-  li.addEventListener("dragstart", (e) => {
-    if (!li.draggable) return;
-    e.dataTransfer.setData(DRAG, li.dataset.id);
-    e.dataTransfer.effectAllowed = "move";
-    li.classList.add("dragging");
-  });
-  li.addEventListener("dragend", () => {
-    li.draggable = false;
-    li.classList.remove("dragging");
-    clearMarks();
-  });
-  li.addEventListener("dragover", (e) => {
-    if (![...e.dataTransfer.types].includes(DRAG)) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    const r = li.getBoundingClientRect();
-    const after = e.clientY > r.top + r.height / 2;
-    clearMarks();
-    li.classList.add(after ? "drop-after" : "drop-before");
-  });
-  li.addEventListener("drop", async (e) => {
-    e.preventDefault();
-    const moved = e.dataTransfer.getData(DRAG);
-    const after = li.classList.contains("drop-after");
-    clearMarks();
-    if (!moved || moved === li.dataset.id) return;
-    const order = [...li.parentElement.children].map((x) => x.dataset.id).filter((id) => id !== moved);
-    order.splice(order.indexOf(li.dataset.id) + (after ? 1 : 0), 0, moved);
-    await attempt(invoke("set_order", { order }));
-    await loadLibrary();
-    onChange();
+function dragRow(li, handle, name) {
+  draggable(handle, {
+    label: () => name,
+    iconName: "book",
+    start: () => li.classList.add("dragging"),
+    finish: () => li.classList.remove("dragging"),
+    clear: clearMarks,
+    over: (x, y, under) => {
+      const row = under.closest(".rows li[data-id]");
+      if (!row || row.parentElement !== li.parentElement) return null;
+      const r = row.getBoundingClientRect();
+      const after = y > r.top + r.height / 2;
+      row.classList.add(after ? "drop-after" : "drop-before");
+      return { id: row.dataset.id, after };
+    },
+    drop: async ({ id, after }) => {
+      const moved = li.dataset.id;
+      if (id === moved) return;
+      const order = [...li.parentElement.children].map((x) => x.dataset.id).filter((x) => x !== moved);
+      order.splice(order.indexOf(id) + (after ? 1 : 0), 0, moved);
+      await attempt(invoke("set_order", { order }));
+      await loadLibrary();
+      onChange();
+    },
   });
 }
 
@@ -218,6 +215,76 @@ export async function addFolder() {
     if (ok !== null) toast("Opening the dictionaries…");
     loadLibrary();
   }
+}
+
+// ── Online ───────────────────────────────────────────────────
+const LANGS = [["ru", "Russian"], ["uk", "Ukrainian"], ["en", "English"], ["de", "German"], ["fr", "French"],
+  ["es", "Spanish"], ["it", "Italian"], ["pt", "Portuguese"], ["pl", "Polish"], ["zh", "Chinese"], ["ja", "Japanese"]];
+let onlineDraft = null;
+
+function online() {
+  const box = el("div", {}, el("p", { class: "hint", text: "…" }));
+  invoke("online_settings").then((o) => { onlineDraft = o; box.replaceChildren(...onlineRows()); });
+  return [
+    el("p", { class: "hint", text: "After the dictionaries, Kosha can ask online services about the word or phrase you look up. "
+      + "What you look up is then sent to them. Each can be switched off." }),
+    box,
+  ];
+}
+
+async function saveOnline() {
+  await attempt(invoke("set_online_settings", { online: onlineDraft }));
+  await loadOnlineSettings();
+}
+
+function onlineRows() {
+  const o = onlineDraft;
+  const langSelect = (key) => {
+    const sel = el("select", { "aria-label": key });
+    for (const [v, n] of LANGS) sel.append(el("option", { value: v, text: n }));
+    sel.value = o[key];
+    sel.onchange = () => { o[key] = sel.value; saveOnline(); };
+    return sel;
+  };
+  const toggle = (key, text, hint) => {
+    const b = el("input", { type: "checkbox" });
+    b.checked = o[key];
+    b.onchange = () => { o[key] = b.checked; saveOnline(); };
+    return el("div", { class: "setting" }, el("label", { class: "check" }, b, text), hint ? el("p", { class: "hint", text: hint }) : null);
+  };
+  const keyRow = (key, source, getUrl, getText) => {
+    const input = el("input", { type: "password", class: "key", value: o[key], placeholder: "API key", spellcheck: "false", autocomplete: "off" });
+    input.onchange = () => { o[key] = input.value.trim(); saveOnline(); };
+    const result = el("span", { class: "sub" });
+    return el("div", { class: "setting key-row" },
+      input,
+      el("button", { class: "btn small", text: "Test", onclick: async () => {
+        o[key] = input.value.trim();
+        await saveOnline();
+        result.textContent = "…";
+        try {
+          const f = await invoke("online_lookup", { source, text: "Good morning" });
+          result.textContent = f ? `Works: “Good morning” → “${f.text}”` : "No answer: is the key filled in?";
+        } catch (e) {
+          result.textContent = String(e);
+        }
+      } }),
+      el("button", { class: "link-btn", text: getText, onclick: () => invoke("plugin:opener|open_url", { url: getUrl }).catch(() => {}) }),
+      result);
+  };
+  return [
+    row("Your language", langSelect("native"), "Translations go into your language, and from it into the one you learn."),
+    row("The language you learn", langSelect("learning")),
+    el("h3", { text: "Wikipedia" }),
+    toggle("wikipedia", "Show the Wikipedia article", "Its summary and picture, from the English or Russian Wikipedia (by the script of the word)."),
+    el("h3", { text: "DeepL" }),
+    toggle("deepl", "Translate with DeepL", "Needs your DeepL API key; the free plan has 500,000 characters a month (keys ending in “:fx”)."),
+    keyRow("deepl_key", "deepl", "https://www.deepl.com/pro-api", "Get a free key"),
+    el("h3", { text: "Google Translate" }),
+    toggle("google", "Translate with Google", "Needs a Google Cloud Translation API key (Google Cloud console; billing must be set up, with a monthly free allowance). Without one, the “Google Translate” button opens the website instead."),
+    keyRow("google_key", "google", "https://console.cloud.google.com/apis/library/translate.googleapis.com", "Where to get a key"),
+    el("p", { class: "hint", text: "Keys are kept in Kosha's settings file on this computer only." }),
+  ];
 }
 
 // ── Cards ────────────────────────────────────────────────────

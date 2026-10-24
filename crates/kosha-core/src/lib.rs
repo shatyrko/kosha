@@ -9,6 +9,7 @@ pub mod cards;
 pub mod dictionary;
 pub mod dsl;
 pub mod headword;
+pub mod history;
 pub mod index;
 pub mod library;
 pub mod normalize;

@@ -13,8 +13,9 @@ const state = {
   sel: -1,
   shown: null,      // word whose articles are on screen
   arts: [],         // those articles
-  history: [],
+  history: [],      // back / forward in this window
   pos: -1,
+  recent: [],       // the saved search history: [{word, at, count}]
   pending: null,    // word to show once the dictionaries are open
   token: 0,         // newest request; older answers are dropped
 };
@@ -43,6 +44,27 @@ export function init({ addFolder }) {
   articles.addEventListener("click", articleClick);
   // the saved marks follow the deck
   on("deck", () => refreshSaveButtons());
+  invoke("history").then((h) => { state.recent = h; if (!q.value.trim()) runSearch(); });
+  loadOnlineSettings();
+}
+
+// ── search history ───────────────────────────────────────────
+function remember(word) {
+  if (!prefs.get("history", true)) return;
+  invoke("history_add", { word }).then((h) => {
+    state.recent = h;
+    if (!q.value.trim()) renderResults();
+  }).catch(() => {});
+}
+
+export async function clearHistory() {
+  state.recent = await invoke("history_clear");
+  if (!q.value.trim()) runSearch();
+}
+
+async function forget(word) {
+  state.recent = await invoke("history_remove", { word });
+  if (!q.value.trim()) runSearch();
 }
 
 // ── search ───────────────────────────────────────────────────
@@ -50,7 +72,8 @@ export async function runSearch() {
   const text = q.value;
   $("clear").hidden = text === "";
   if (!text.trim()) {
-    state.hits = [];
+    // the recent searches, newest first
+    state.hits = prefs.get("history", true) ? state.recent.map((r) => ({ word: r.word, recent: true })) : [];
     state.sel = -1;
     renderResults();
     if (!state.shown) showWelcome();
@@ -87,6 +110,11 @@ function renderResults() {
   }
   let fuzzyHeader = false;
   const many = enabledCount() > 1;
+  if (state.hits[0]?.recent) {
+    results.append(el("li", { class: "group with-action" },
+      el("span", { text: "Recent searches" }),
+      el("button", { class: "link-btn", text: "Clear", title: "Forget the search history", onclick: clearHistory })));
+  }
   state.hits.forEach((h, i) => {
     if (h.fuzzy && !fuzzyHeader) {
       fuzzyHeader = true;
@@ -103,6 +131,10 @@ function renderResults() {
       },
       el("span", { class: "w", text: h.word }),
       many && h.dicts > 1 ? el("span", { class: "n", text: String(h.dicts), title: `in ${h.dicts} dictionaries` }) : null,
+      h.recent ? el("button", {
+        class: "forget", title: "Remove from the history", "aria-label": `Remove ${h.word} from the history`,
+        onclick: (e) => { e.stopPropagation(); forget(h.word); },
+      }, icon("close", 13)) : null,
     ));
   });
   results.querySelector(".sel")?.scrollIntoView({ block: "nearest" });
@@ -126,10 +158,13 @@ export async function show(word, push) {
   const token = ++state.token;
   const arts = await invoke("lookup", { word });
   if (token !== state.token) return;
+  if (push) remember(word);
   if (!arts.length) {
     const hits = await invoke("search", { query: word, limit: 8 });
     if (token !== state.token) return;
     showNotFound(word, hits);
+    // a phrase no dictionary has: what the online sources say (only when asked for, not while typing)
+    if (push) addOnline(word, token, 0);
     return;
   }
   state.shown = word;
@@ -147,6 +182,105 @@ export async function show(word, push) {
   }
   updateNav();
   if (prefs.get("autoplay", false)) articles.querySelector("button.sound")?.click();
+  // online sources: at once for a chosen word, after a pause while typing or browsing the list
+  addOnline(word, token, push ? 0 : 900);
+}
+
+// ── online sources ───────────────────────────────────────────
+let online = { wikipedia: true, google: true, deepl: true, deepl_key: "", google_key: "", native: "ru", learning: "en" };
+const onlineCache = new Map();
+
+export async function loadOnlineSettings() {
+  try { online = await invoke("online_settings"); } catch { /* defaults */ }
+  onlineCache.clear();
+}
+
+const SOURCES = {
+  wikipedia: "Wikipedia",
+  google: "Google Translate",
+  deepl: "DeepL",
+};
+
+function hasCyrillic(t) {
+  return /[\u0400-\u04ff]/.test(t);
+}
+
+/** Where a translation of this text goes: to your language, or from it to the one you learn. */
+function targetFor(t) {
+  const nativeCyr = ["ru", "uk", "be", "bg", "sr", "kk"].includes(online.native);
+  return hasCyrillic(t) === nativeCyr ? online.learning : online.native;
+}
+
+function webLinks(text) {
+  const e = encodeURIComponent(text);
+  const to = targetFor(text);
+  const wiki = hasCyrillic(text) ? "ru" : "en";
+  return [
+    ["Google", `https://www.google.com/search?q=${e}`],
+    ["Google Translate", `https://translate.google.com/?sl=auto&tl=${to}&text=${e}&op=translate`],
+    ["DeepL", `https://www.deepl.com/translator#auto/${to}/${e}`],
+    ["Wikipedia", `https://${wiki}.wikipedia.org/w/index.php?search=${e}`],
+  ];
+}
+
+function openUrl(url) {
+  invoke("plugin:opener|open_url", { url }).catch(() => toast("Can't open the browser", "error"));
+}
+
+function addOnline(text, token, delay) {
+  setTimeout(() => {
+    if (token !== state.token) return;
+    const wanted = Object.keys(SOURCES).filter((k) =>
+      online[k] && (k !== "deepl" || online.deepl_key.trim()) && (k !== "google" || online.google_key.trim()));
+    const section = el("section", { class: "online" },
+      el("div", { class: "online-links" },
+        el("span", { class: "online-label", text: "Look up online" }),
+        ...webLinks(text).map(([name, url]) => el("button", { class: "chip", onclick: () => openUrl(url) }, icon("M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5", 13), name))));
+    for (const src of wanted) section.append(onlineCard(src, text, token));
+    articles.append(section);
+  }, delay);
+}
+
+function onlineCard(src, text, token) {
+  const card = el("article", { class: "article online-card", "data-source": src },
+    el("div", { class: "article-head" }, el("div", { class: "dict", text: SOURCES[src] })),
+    el("div", { class: "online-wait" }, el("span", { class: "spinner" })));
+  const key = `${src}|${text}`;
+  const got = onlineCache.has(key) ? Promise.resolve(onlineCache.get(key)) : invoke("online_lookup", { source: src, text });
+  got.then((found) => {
+    onlineCache.set(key, found);
+    if (token !== state.token) return;
+    fillOnline(card, src, found);
+  }).catch((e) => {
+    if (token !== state.token) return;
+    card.querySelector(".online-wait").replaceWith(el("p", { class: "online-none", text: String(e) }));
+  });
+  return card;
+}
+
+function fillOnline(card, src, f) {
+  const wait = card.querySelector(".online-wait");
+  if (!f) {
+    wait.replaceWith(el("p", { class: "online-none", text: src === "wikipedia" ? "No Wikipedia article for this." : "No translation." }));
+    return;
+  }
+  const head = card.querySelector(".dict");
+  const langs = f.to ? `${(f.from || "?").toUpperCase()} → ${f.to.toUpperCase()}` : (f.from || "").toUpperCase();
+  if (langs) head.textContent = `${SOURCES[src]} · ${langs}`;
+  const body = el("div", { class: "online-body" });
+  if (src === "wikipedia") {
+    if (f.image) body.append(el("img", { class: "wiki-pic", src: f.image, alt: "", loading: "lazy" }));
+    body.append(el("div", { class: "wiki-title", text: f.title }));
+    if (f.description) body.append(el("div", { class: "wiki-desc", text: f.description }));
+    body.append(el("p", { class: "wiki-text", text: f.text }));
+  } else {
+    body.append(el("p", { class: "translation", text: f.text }));
+  }
+  if (f.url) {
+    body.append(el("button", { class: "link-btn more", onclick: () => openUrl(f.url) },
+      src === "wikipedia" ? "Read on Wikipedia" : `Open in ${SOURCES[src]}`));
+  }
+  wait.replaceWith(body);
 }
 
 function articleCard(a, word) {

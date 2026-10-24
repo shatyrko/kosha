@@ -18,8 +18,23 @@ the macOS build is set up but not tried yet.
 - Dictionaries: folders to look in, each dictionary on or off, the order articles appear in.
 - Light and dark, following the system; one column in a narrow window.
 - `kosha-app WORD` opens on that word; with Kosha already open, the word goes to that window.
+- No title bar: a round close button (red under the pointer), the window is dragged by its top
+  bars, Ctrl+Q / Ctrl+W close it. Dragging inside the window (dictionaries, cards, folders) is
+  drawn by the page, so it looks right on scaled displays.
 - Settings (Ctrl+,): appearance (system, light, dark), text size, secondary text, playing the
   pronunciation, dictionaries, study defaults, where your data is, the keyboard shortcuts.
+
+## Search history and online sources
+
+- **History**: the words you open, newest first, under the search field while it is empty (each
+  once; × removes one, "Clear" all; Settings → General can switch it off). Saved in
+  `history.json` next to the cards.
+- **Online** (Settings → Online, each can be switched off; what you look up is then sent there):
+  the Wikipedia summary (with its picture), DeepL and Google Translate (with your own API keys:
+  DeepL's free plan, Google's Cloud Translation API). Translations go into your language, or from
+  it into the one you learn. "Look up online" buttons open Google, Google Translate, DeepL and
+  Wikipedia in the browser, no key needed. For phrases no dictionary has, the online results are
+  what you get.
 
 ## Word cards
 

@@ -46,6 +46,9 @@ function setMode(m) {
 $("tab-dict").onclick = () => setMode("dictionary");
 $("tab-cards").onclick = () => setMode("cards");
 $("open-settings").onclick = () => settings.open();
+// the window has no title bar: its close button, and Ctrl+Q / Ctrl+W
+const closeWindow = () => window.__TAURI__.window.getCurrentWindow().close();
+$("win-close").onclick = closeWindow;
 
 on("deck", () => {
   const n = store.deck.cards.length;
@@ -77,6 +80,7 @@ document.addEventListener("keydown", (e) => {
     (mode === "cards" ? $("card-filter") : $("q")).focus();
     return;
   }
+  if (mod && (e.key === "q" || e.key === "w")) { e.preventDefault(); closeWindow(); return; }
   if (mod && e.key === "1") { e.preventDefault(); setMode("dictionary"); return; }
   if (mod && e.key === "2") { e.preventDefault(); setMode("cards"); return; }
   if (mod && e.key === ",") { e.preventDefault(); settings.isOpen() ? settings.close() : settings.open(); return; }

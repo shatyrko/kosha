@@ -4,6 +4,7 @@ import { $, el, icon, plural, prefs, menu, choose, ask, toast, dictColor } from 
 import { store, on, tree, children, folder, folderPath, cardsIn, newFolder, deckCommand, subtree } from "./store.js";
 import * as study from "./study.js";
 import { play } from "./dictionary.js";
+import { draggable } from "./drag.js";
 
 const treeEl = $("folder-tree");
 const grid = $("card-grid");
@@ -14,7 +15,6 @@ let collapsed = new Set(prefs.get("collapsed", []));
 let lookUp = () => {};
 let detail = null; // the open card dialog: {list, index}
 
-const DRAG = "application/x-kosha";
 
 export function init(opts) {
   lookUp = opts.lookUp;
@@ -107,34 +107,34 @@ function row({ v, name, iconName, n, depth = 0, kids = false, folderId = null })
       "aria-label": "Folder actions",
       onclick: (e) => { e.stopPropagation(); folderMenu(e.currentTarget, folderId); },
     }, icon("more", 16)));
-    // folders can be dragged into other folders
-    li.draggable = true;
-    li.addEventListener("dragstart", (e) => {
-      e.dataTransfer.setData(DRAG, JSON.stringify({ folder: folderId }));
-      e.dataTransfer.effectAllowed = "move";
+    // folders can be dragged into other folders (or onto "Unsorted": to the top level)
+    draggable(li, {
+      label: () => name,
+      iconName: "folder",
+      clear: clearDrop,
+      over: (x, y, under) => dropOn(under, (t) => t !== folderId && !subtree(folderId).includes(t)),
+      drop: (target) => {
+        const parent = target === "unsorted" ? null : target;
+        if ((folder(folderId)?.parent || null) === parent) return;
+        deckCommand("folder_move", { id: folderId, parent }).then((d) =>
+          d && toast(parent ? `Moved into ${folderPath(parent)}` : "Moved to the top level"));
+      },
     });
   }
-  if (v !== "all") {
-    li.addEventListener("dragover", (e) => {
-      if (![...e.dataTransfer.types].includes(DRAG)) return;
-      e.preventDefault();
-      li.classList.add("drop");
-    });
-    li.addEventListener("dragleave", () => li.classList.remove("drop"));
-    li.addEventListener("drop", (e) => {
-      e.preventDefault();
-      li.classList.remove("drop");
-      let data;
-      try { data = JSON.parse(e.dataTransfer.getData(DRAG)); } catch { return; }
-      const target = v === "unsorted" ? null : v;
-      if (data.card) moveCard(data.card, target);
-      else if (data.folder && data.folder !== target) {
-        deckCommand("folder_move", { id: data.folder, parent: target }).then((d) =>
-          d && toast(target ? `Moved into ${folderPath(target)}` : "Moved to the top level"));
-      }
-    });
-  }
+  if (v !== "all") li.dataset.drop = v;
   return li;
+}
+
+/** The folder row under the pointer that accepts a drop ("unsorted" or a folder id), marked. */
+function dropOn(under, accept) {
+  const row = under.closest(".tree-row[data-drop]");
+  if (!row || !accept(row.dataset.drop)) return null;
+  row.classList.add("drop");
+  return row.dataset.drop;
+}
+
+function clearDrop() {
+  document.querySelectorAll(".tree-row.drop").forEach((r) => r.classList.remove("drop"));
 }
 
 async function folderMenu(anchor, id) {
@@ -226,7 +226,6 @@ function tile(c, i, list) {
   const t = el("div", {
     class: `tile${c.known ? " known" : ""}`,
     tabindex: "0",
-    draggable: "true",
     style: `--dot: ${dictColor(c.dict_id)}`,
     onclick: () => openCard(list, i),
     onkeydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCard(list, i); } },
@@ -240,9 +239,14 @@ function tile(c, i, list) {
       ? el("span", { class: "tile-folder", text: c.folder ? folder(c.folder)?.name || "" : "" })
       : null,
     c.known ? el("span", { class: "tile-known", title: "Marked “Got it” in study" }, icon("check", 14)) : null));
-  t.addEventListener("dragstart", (e) => {
-    e.dataTransfer.setData(DRAG, JSON.stringify({ card: c.id }));
-    e.dataTransfer.effectAllowed = "move";
+  draggable(t, {
+    label: () => c.word,
+    iconName: "bookmark",
+    start: () => t.classList.add("dragging"),
+    finish: () => t.classList.remove("dragging"),
+    clear: clearDrop,
+    over: (x, y, under) => dropOn(under, (target) => (target === "unsorted" ? null : target) !== (c.folder || null)),
+    drop: (target) => moveCard(c.id, target === "unsorted" ? null : target),
   });
   return t;
 }
@@ -301,7 +305,7 @@ function renderDetail() {
           el("div", { class: "sub", text: `${c.dict_name} · saved ${new Date(c.added * 1000).toLocaleDateString()}${c.reviews ? ` · studied ${plural(c.reviews, "time", "times")}` : ""}` })),
         el("span", { class: "pos", text: `${detail.index + 1} / ${n}` }),
         el("button", { class: "icon-btn", title: "Next (→)", disabled: detail.index >= n - 1, onclick: () => step(1) }, icon("forward")),
-        el("button", { class: "icon-btn close-btn", title: "Close (Esc)", "aria-label": "Close", onclick: close }, icon("close"))),
+        el("button", { class: "icon-btn", title: "Close (Esc)", "aria-label": "Close", onclick: close }, icon("close"))),
       body,
       el("label", { class: "field" }, el("span", { text: "Note" }), note),
       el("div", { class: "card-actions" },

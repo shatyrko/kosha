@@ -16,19 +16,32 @@
         "width": 1040,
         "height": 720,
         "minWidth": 420,
-        "minHeight": 360
+        "minHeight": 360,
+        "decorations": false
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' kosha: http://kosha.localhost data:; media-src kosha: http://kosha.localhost; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; img-src 'self' kosha: http://kosha.localhost https://upload.wikimedia.org https://thumb.wikimedia.org data:; media-src kosha: http://kosha.localhost; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost"
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["deb", "rpm", "appimage", "app", "dmg"],
+    "targets": [
+      "deb",
+      "rpm",
+      "appimage",
+      "app",
+      "dmg"
+    ],
     "category": "Education",
     "shortDescription": "Dictionaries, read in place",
     "longDescription": "Kosha opens ABBYY Lingvo DSL dictionaries where they are and lets you search them all at once.",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
   }
 }

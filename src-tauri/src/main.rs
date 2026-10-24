@@ -7,6 +7,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod cards;
+mod history;
+mod online;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
@@ -21,7 +23,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 #[derive(Default)]
 pub(crate) struct AppState {
     pub(crate) library: RwLock<Option<Library>>,
-    settings: Mutex<Settings>,
+    pub(crate) settings: Mutex<Settings>,
     /// the word Kosha was started with, taken once by the page
     first_word: Mutex<Option<String>>,
     /// increases with every reload, so an older reload finishing late is ignored
@@ -75,18 +77,29 @@ fn reload(app: &AppHandle, state: &Shared) {
 
 #[tauri::command]
 fn search(state: State<Shared>, query: String, limit: Option<usize>) -> Vec<Hit> {
-    match state.library.read().unwrap().as_ref() {
-        Some(lib) => lib.search(&query, limit.unwrap_or(60)),
-        None => Vec::new(),
-    }
+    let lib = state.library.read().unwrap();
+    let Some(lib) = lib.as_ref() else {
+        return Vec::new();
+    };
+    guarded(|| lib.search(&query, limit.unwrap_or(60)))
+}
+
+/// A bug in reading one dictionary must not close the window: commands run where a panic
+/// can't unwind, so it is caught here (and that search or lookup gives nothing).
+fn guarded<T: Default>(f: impl FnOnce() -> T) -> T {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)).unwrap_or_else(|_| {
+        eprintln!("kosha: a dictionary could not be read (see the message above)");
+        T::default()
+    })
 }
 
 #[tauri::command]
 fn lookup(state: State<Shared>, word: String) -> Vec<Article> {
-    match state.library.read().unwrap().as_ref() {
-        Some(lib) => lib.lookup(&word, &resource_url),
-        None => Vec::new(),
-    }
+    let lib = state.library.read().unwrap();
+    let Some(lib) = lib.as_ref() else {
+        return Vec::new();
+    };
+    guarded(|| lib.lookup(&word, &resource_url))
 }
 
 #[tauri::command]
@@ -286,6 +299,7 @@ fn main() {
         .plugin(tauri_plugin_opener::init())
         .manage(state.clone())
         .manage(cards::Cards::load())
+        .manage(history::History::load())
         .register_uri_scheme_protocol("kosha", |ctx, request| {
             let state = ctx.app_handle().state::<Shared>();
             let path = request.uri().path().trim_start_matches('/');
@@ -328,7 +342,14 @@ fn main() {
             cards::folder_add,
             cards::folder_rename,
             cards::folder_move,
-            cards::folder_delete
+            cards::folder_delete,
+            history::history,
+            history::history_add,
+            history::history_remove,
+            history::history_clear,
+            online::online_lookup,
+            online::online_settings,
+            online::set_online_settings
         ])
         .setup(move |app| {
             reload(app.handle(), &state);

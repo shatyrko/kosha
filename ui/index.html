@@ -57,7 +57,7 @@
 
     <!-- dictionary: articles -->
     <main id="main" class="main-dict">
-      <header id="bar">
+      <header id="bar" data-tauri-drag-region>
         <button id="back-list" class="icon-btn narrow-only" title="Results" aria-label="Back to results">
           <svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></svg>
         </button>
@@ -67,17 +67,17 @@
         <button id="forward" class="icon-btn" title="Forward (Alt+Right)" aria-label="Forward" disabled>
           <svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>
         </button>
-        <h1 id="word"></h1>
+        <h1 id="word" data-tauri-drag-region></h1>
       </header>
       <div id="articles" tabindex="-1"></div>
     </main>
 
     <!-- cards: the cards of the chosen folder -->
     <main id="cards-main" class="main-cards">
-      <header class="cards-bar">
-        <div class="grow">
-          <h1 id="cards-title">All cards</h1>
-          <div id="cards-count" class="sub"></div>
+      <header class="cards-bar" data-tauri-drag-region>
+        <div class="grow" data-tauri-drag-region>
+          <h1 id="cards-title" data-tauri-drag-region>All cards</h1>
+          <div id="cards-count" class="sub" data-tauri-drag-region></div>
         </div>
         <label id="deep-label" class="check small" title="Also the cards of the folders inside">
           <input id="deep" type="checkbox" checked> With sub-folders
@@ -93,10 +93,14 @@
       <div id="card-grid"></div>
     </main>
 
+    <button id="win-close" title="Close Kosha (Ctrl+Q)" aria-label="Close Kosha">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+
     <section id="settings" hidden aria-label="Settings">
       <nav class="settings-nav" aria-label="Settings sections"></nav>
       <div class="settings-main">
-        <button id="close-settings" class="icon-btn close-x close-btn" title="Close (Esc)" aria-label="Close">
+        <button id="close-settings" class="icon-btn close-x" title="Close (Esc)" aria-label="Close">
           <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
         </button>
         <div class="settings-body"></div>

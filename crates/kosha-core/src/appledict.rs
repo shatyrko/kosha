@@ -213,7 +213,12 @@ pub fn decode_entities(s: &str) -> String {
     while let Some(i) = rest.find('&') {
         out.push_str(&rest[..i]);
         rest = &rest[i..];
-        let Some(semi) = rest[..rest.len().min(12)].find(';') else {
+        // the ';' within the next 12 bytes (searched as bytes: a cut in the middle of a letter
+        // like 'р' would panic, and ';' is always a boundary)
+        let Some(semi) = rest.as_bytes()[..rest.len().min(12)]
+            .iter()
+            .position(|&b| b == b';')
+        else {
             out.push('&');
             rest = &rest[1..];
             continue;
@@ -386,9 +391,11 @@ fn percent_decode(s: &str) -> String {
     let mut out = Vec::with_capacity(b.len());
     let mut i = 0;
     while i < b.len() {
+        // two hex digits, read as bytes (a '%' before a Cyrillic letter must not cut it in two)
         if b[i] == b'%' && i + 3 <= b.len() {
-            if let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
-                out.push(v);
+            let hex = |c: u8| (c as char).to_digit(16);
+            if let (Some(h), Some(l)) = (hex(b[i + 1]), hex(b[i + 2])) {
+                out.push((h * 16 + l) as u8);
                 i += 3;
                 continue;
             }
@@ -704,6 +711,13 @@ mod tests {
             decode_entities("a &amp; b &#1092; &#x44; &bogus; &"),
             "a & b ф D &bogus; &"
         );
+        // a lone & before Cyrillic: the search must not cut a letter in two
+        assert_eq!(
+            decode_entities("A & B, стрелка & прочее"),
+            "A & B, стрелка & прочее"
+        );
+        assert_eq!(decode_entities("&привет"), "&привет");
+        assert_eq!(percent_decode("100%не 50%25"), "100%не 50%");
         assert_eq!(
             link_word("x-dictionary:r:punch_stamp").as_deref(),
             Some("punch stamp")
