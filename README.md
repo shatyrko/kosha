@@ -1,8 +1,8 @@
 # Kosha
 
 A modern dictionary app for Linux and macOS that reads your dictionaries **where they are**:
-ABBYY Lingvo DSL files (plain `.dsl` or compressed `.dsl.dz`) are opened in place, never
-converted or copied. Kosha scans a file once to index its headwords, keeps that small index in
+ABBYY Lingvo DSL files (plain `.dsl` or compressed `.dsl.dz`) and Apple Dictionary bundles
+(`.dictionary`) are opened in place, never converted or copied. Kosha scans a file once to index its headwords, keeps that small index in
 its cache folder, and reads an article straight from the original file when you look a word up.
 
 Status: early, but usable: the app window, the engine and the command-line tool work on Linux;
@@ -49,7 +49,17 @@ word as a card, with a copy of its article, so it stays readable even if the dic
 - Sounds and pictures `[s]...[/s]` from `<name>.dsl.files.zip`, `<name>.files.zip` or a
   `<name>.dsl.files` folder next to the dictionary.
 
+- **Apple Dictionary bundles** (`X.dictionary`, the format of macOS's Dictionary app; ABBYY
+  Lingvo for Mac shipped its dictionaries this way): read in place from `Contents/Body.data`,
+  one compressed block per article; name and languages from `Info.plist`. Article markup is
+  passed through a whitelist (indents, bold/italic, labels with their explanation on hover,
+  secondary text, cross-references, colours). Lingvo's `_abrv` bundles are skipped: their
+  explanations are already in the articles.
+
 Not supported: Lingvo's compiled `.lsd` files (convert them to `.dsl` first).
+
+A disk image (`.dmg`) with Apple dictionaries can be unpacked on Linux with 7-Zip
+(`7z x file.dmg`); add the folder it gives in Settings → Dictionaries.
 
 ## Search
 

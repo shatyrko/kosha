@@ -1,6 +1,7 @@
-//! One DSL dictionary: the file (read in place), its index, its abbreviations (`<name>_abrv.dsl`)
+//! One dictionary, read in place: a DSL file with its index, its abbreviations (`<name>_abrv.dsl`)
 //! and its resource files — sounds and pictures — from `<name>.dsl.files.zip`, `<name>.files.zip`
-//! or a `<name>.dsl.files` / `<name>.files` folder next to it.
+//! or a `<name>.dsl.files` / `<name>.files` folder next to it; or an Apple Dictionary bundle
+//! (`X.dictionary`, see `appledict`).
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -10,9 +11,10 @@ use std::sync::Mutex;
 
 use serde::Serialize;
 
+use crate::appledict;
 use crate::dsl;
 use crate::headword;
-use crate::index::{file_stamp, Index};
+use crate::index::{data_file, file_stamp, Format, Index, APPLE_OFFSET_MASK};
 use crate::render::{self, RenderCtx};
 use crate::source::{without_dz, Source};
 use crate::text::Encoding;
@@ -89,7 +91,9 @@ impl Dictionary {
     pub fn open(path: &Path, cache_dir: Option<&Path>) -> io::Result<Dictionary> {
         let path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
         let id = dict_id(&path);
-        let stamp = file_stamp(&path)?;
+        // for an Apple bundle: its Body.data
+        let data = data_file(&path);
+        let stamp = file_stamp(&data)?;
         let cache = cache_dir.map(|d| d.join(format!("{id}.idx")));
         let index = match cache.as_deref().map(|c| Index::load(c, stamp)) {
             Some(Ok(Some(ix))) => ix,
@@ -102,17 +106,22 @@ impl Dictionary {
                 ix
             }
         };
-        let source = Source::open(&path)?;
-        let (dsl_path, bare) = stem_variants(&path);
-        let abbreviations = [
-            with_suffix(&bare, "_abrv.dsl"),
-            with_suffix(&bare, "_abrv.dsl.dz"),
-        ]
-        .iter()
-        .find(|p| p.is_file())
-        .map(|p| read_abbreviations(p).unwrap_or_default())
-        .unwrap_or_default();
-        let resources = open_resources(&dsl_path, &bare);
+        let source = Source::open(&data)?;
+        let (abbreviations, resources) = if index.format == Format::Dsl {
+            let (dsl_path, bare) = stem_variants(&path);
+            let abbr = [
+                with_suffix(&bare, "_abrv.dsl"),
+                with_suffix(&bare, "_abrv.dsl.dz"),
+            ]
+            .iter()
+            .find(|p| p.is_file())
+            .map(|p| read_abbreviations(p).unwrap_or_default())
+            .unwrap_or_default();
+            (abbr, open_resources(&dsl_path, &bare))
+        } else {
+            // Apple bundles carry their label explanations inside the articles
+            (HashMap::new(), Resources::None)
+        };
         Ok(Dictionary {
             id,
             path,
@@ -160,6 +169,9 @@ impl Dictionary {
         article: u32,
         resource_url: &dyn Fn(&str, &str) -> String,
     ) -> io::Result<Article> {
+        if self.index.format == Format::AppleDict {
+            return self.apple_article(article);
+        }
         let text = self.article_source(article)?;
         let (heads, body) = dsl::split_article(&text);
         let headwords: Vec<String> = heads.iter().map(|h| headword::parse(h).display).collect();
@@ -186,6 +198,23 @@ impl Dictionary {
             } else {
                 headwords
             },
+        })
+    }
+
+    fn apple_article(&self, article: u32) -> io::Result<Article> {
+        let (off, len) = self.index.articles[article as usize];
+        let nth = (off >> 48) as usize;
+        let block = self.source.read_at(off & APPLE_OFFSET_MASK, len as usize)?;
+        let text = appledict::block_text(&block)?;
+        let entry = appledict::entries(&text).nth(nth).ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidData, "entry not found in its block")
+        })?;
+        Ok(Article {
+            dict_id: self.id.clone(),
+            dict_name: self.name(),
+            headwords: vec![appledict::title(entry)],
+            html: appledict::to_html(entry),
+            text: appledict::to_text(entry),
         })
     }
 

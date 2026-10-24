@@ -7,12 +7,35 @@ use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::Path;
 use std::time::UNIX_EPOCH;
 
+use crate::appledict;
 use crate::dsl::{self, Header};
 use crate::headword;
+use crate::normalize;
 use crate::source::Source;
 use crate::text::Encoding;
 
-const MAGIC: &[u8; 8] = b"KOSHAIX\x01";
+/// v2: the dictionary format is saved too (v1 indexes are rebuilt).
+const MAGIC: &[u8; 8] = b"KOSHAIX\x02";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Format {
+    /// ABBYY Lingvo DSL: `articles` are byte ranges of the uncompressed file
+    Dsl,
+    /// Apple Dictionary bundle: `articles` are blocks of Body.data; the top 16 bits of the
+    /// offset are the entry's number inside its block (almost always 0)
+    AppleDict,
+}
+
+pub const APPLE_OFFSET_MASK: u64 = (1 << 48) - 1;
+
+/// The file whose size and time tell whether an index is still valid.
+pub fn data_file(path: &Path) -> std::path::PathBuf {
+    if appledict::is_bundle(path) {
+        appledict::body_path(path)
+    } else {
+        path.to_path_buf()
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Word {
@@ -25,6 +48,7 @@ pub struct Word {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Index {
+    pub format: Format,
     pub header: Header,
     pub encoding: Encoding,
     /// byte offset and length of every article in the uncompressed file
@@ -33,6 +57,16 @@ pub struct Index {
     pub words: Vec<Word>,
     /// size and modification time (seconds) of the file the index was built from
     pub stamp: (u64, u64),
+}
+
+fn sort_words(words: &mut Vec<Word>) {
+    words.sort_by(|a, b| {
+        a.key
+            .cmp(&b.key)
+            .then_with(|| a.display.cmp(&b.display))
+            .then(a.article.cmp(&b.article))
+    });
+    words.dedup_by(|a, b| a.key == b.key && a.article == b.article);
 }
 
 pub fn file_stamp(path: &Path) -> io::Result<(u64, u64)> {
@@ -47,6 +81,9 @@ pub fn file_stamp(path: &Path) -> io::Result<(u64, u64)> {
 
 impl Index {
     pub fn build(path: &Path) -> io::Result<Index> {
+        if appledict::is_bundle(path) {
+            return Self::build_apple(path);
+        }
         let stamp = file_stamp(path)?;
         let mut head = [0u8; 4096];
         let n = {
@@ -82,16 +119,44 @@ impl Index {
                 }
             }
         }
-        words.sort_by(|a, b| {
-            a.key
-                .cmp(&b.key)
-                .then_with(|| a.display.cmp(&b.display))
-                .then(a.article.cmp(&b.article))
-        });
-        words.dedup_by(|a, b| a.key == b.key && a.article == b.article);
+        sort_words(&mut words);
         Ok(Index {
+            format: Format::Dsl,
             header,
             encoding,
+            articles,
+            words,
+            stamp,
+        })
+    }
+
+    /// An Apple Dictionary bundle: every entry's title, as it is (no DSL headword syntax).
+    fn build_apple(bundle: &Path) -> io::Result<Index> {
+        let body = appledict::body_path(bundle);
+        let stamp = file_stamp(&body)?;
+        let scanned = appledict::scan(&body)?;
+        let mut articles = Vec::with_capacity(scanned.len());
+        let mut words = Vec::with_capacity(scanned.len());
+        let mut last_block = u64::MAX;
+        let mut nth = 0u64;
+        for (i, (off, len, title)) in scanned.into_iter().enumerate() {
+            nth = if off == last_block { nth + 1 } else { 0 };
+            last_block = off;
+            articles.push((off | (nth.min(0xffff) << 48), len));
+            let key = normalize::key(&title);
+            if !key.is_empty() {
+                words.push(Word {
+                    key,
+                    display: title,
+                    article: i as u32,
+                });
+            }
+        }
+        sort_words(&mut words);
+        Ok(Index {
+            format: Format::AppleDict,
+            header: appledict::header(bundle),
+            encoding: Encoding::Utf8,
             articles,
             words,
             stamp,
@@ -118,6 +183,10 @@ impl Index {
         {
             let mut w = BufWriter::new(File::create(&tmp)?);
             w.write_all(MAGIC)?;
+            w.write_all(&[match self.format {
+                Format::Dsl => 0,
+                Format::AppleDict => 1,
+            }])?;
             put_u64(&mut w, self.stamp.0)?;
             put_u64(&mut w, self.stamp.1)?;
             let enc = match self.encoding {
@@ -175,6 +244,13 @@ impl Index {
         if r.read_exact(&mut magic).is_err() || &magic != MAGIC {
             return Ok(None);
         }
+        let mut f = [0u8; 1];
+        r.read_exact(&mut f)?;
+        let format = match f[0] {
+            0 => Format::Dsl,
+            1 => Format::AppleDict,
+            _ => return Ok(None),
+        };
         if (get_u64(&mut r)?, get_u64(&mut r)?) != stamp {
             return Ok(None);
         }
@@ -224,6 +300,7 @@ impl Index {
             });
         }
         Ok(Some(Index {
+            format,
             header,
             encoding,
             articles,

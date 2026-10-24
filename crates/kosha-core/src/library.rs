@@ -101,8 +101,14 @@ pub fn find_files(folders: &[PathBuf]) -> Vec<PathBuf> {
                     .file_name()
                     .map(|n| n.to_string_lossy().to_lowercase())
                     .unwrap_or_default();
-                // resource folders next to a dictionary are not searched
-                if !n.ends_with(".files") {
+                if crate::appledict::is_bundle(&p) {
+                    let c = p.canonicalize().unwrap_or(p);
+                    if seen.insert(c.clone()) {
+                        out.push(c);
+                    }
+                // resource folders next to a dictionary, and Lingvo's abbreviation bundles
+                // (their explanations are already in the articles), are not searched
+                } else if !n.ends_with(".files") && n != "_abrv" && !n.ends_with(".dictionary") {
                     stack.push(p);
                 }
             } else if is_dictionary(&p) {
