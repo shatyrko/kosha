@@ -87,14 +87,18 @@ export async function runSearch() {
   const hits = await invoke("search", { query: text, limit: 80 });
   if (token !== state.token) return;
   state.hits = hits;
-  state.sel = hits.length ? 0 : -1;
+  // only typo suggestions: nothing is chosen, so Enter looks up exactly what was typed
+  const found = hits.length > 0 && !hits[0].fuzzy;
+  state.sel = found ? 0 : -1;
   renderResults();
   clearTimeout(previewTimer);
-  if (hits.length) {
+  if (found) {
     // the top word's articles while typing, as a preview (history only on Enter / click)
     previewTimer = setTimeout(() => show(hits[0].word, false), 90);
   } else {
-    showNotFound(text, []);
+    // not in the dictionaries: say so, and after a pause in typing, what is online
+    showNotFound(text, hits.slice(0, 8));
+    addOnline(text, token, 700);
   }
 }
 
@@ -372,11 +376,13 @@ export function commit(word) {
 function showNotFound(word, hits) {
   state.shown = null;
   state.arts = [];
-  wordTitle.textContent = "";
-  const box = el("div", { class: "empty not-found" },
-    el("h2", { text: `“${word}” isn’t in your dictionaries` }));
+  wordTitle.textContent = word;
+  const anyOnline = online.wikipedia || (online.deepl && online.deepl_key.trim()) || (online.google && online.google_key.trim());
+  const box = el("div", { class: "not-found" },
+    el("div", { class: "nf-line" }, icon("search", 16),
+      el("span", { text: anyOnline ? "Not in your dictionaries. Online:" : "Not in your dictionaries." })));
   if (hits.length) {
-    box.append(el("p", { text: "Maybe one of these:" }));
+    box.append(el("p", { class: "nf-similar", text: "Similar words in your dictionaries:" }));
     const s = el("div", { class: "suggest" });
     for (const h of hits) s.append(el("a", { href: "#", text: h.word, onclick: (e) => { e.preventDefault(); lookUp(h.word); } }));
     box.append(s);
