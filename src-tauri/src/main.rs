@@ -211,6 +211,30 @@ fn move_dict(state: State<Shared>, id: String, by: i32) -> Result<(), String> {
     Ok(())
 }
 
+/// The whole order at once (dragging a dictionary in the list); ids not given keep their order after.
+#[tauri::command]
+fn set_order(state: State<Shared>, order: Vec<String>) -> Result<(), String> {
+    let mut s = state.settings.lock().unwrap();
+    let mut guard = state.library.write().unwrap();
+    let Some(lib) = guard.as_mut() else {
+        return Ok(());
+    };
+    let current = lib.order();
+    let mut new: Vec<String> = order
+        .into_iter()
+        .filter(|id| current.contains(id))
+        .collect();
+    for id in current {
+        if !new.contains(&id) {
+            new.push(id);
+        }
+    }
+    s.order = new;
+    save(&s)?;
+    lib.apply(&s);
+    Ok(())
+}
+
 fn mime(name: &str) -> &'static str {
     match kosha_core::render::ext(name).as_str() {
         "wav" => "audio/wav",
@@ -295,6 +319,7 @@ fn main() {
             rescan,
             set_enabled,
             move_dict,
+            set_order,
             cards::cards,
             cards::card_add,
             cards::card_update,

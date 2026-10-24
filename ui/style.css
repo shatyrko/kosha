@@ -26,6 +26,7 @@
   --shadow: 0 1px 2px rgba(20, 20, 40, .05), 0 2px 8px rgba(20, 20, 40, .04);
   --shadow-big: 0 10px 40px rgba(20, 20, 40, .18), 0 2px 8px rgba(20, 20, 40, .08);
   --scrim: rgba(20, 20, 30, .35);
+  --close: #e5484d;
   --scroll: rgba(0, 0, 0, .28);
   --scroll-hover: rgba(0, 0, 0, .45);
   --article-size: 17px;
@@ -235,6 +236,8 @@ li.group {
 }
 .icon-btn:hover:not(:disabled) { background: var(--accent-soft); color: var(--text); }
 .icon-btn:disabled { opacity: .35; cursor: default; }
+/* close buttons turn red, like a window's close button */
+.icon-btn.close-btn:hover:not(:disabled) { background: var(--close); color: #fff; }
 .text-btn {
   display: flex; align-items: center; gap: 8px;
   width: 100%;
@@ -714,6 +717,11 @@ code { font-size: .92em; background: var(--accent-soft); padding: 0 4px; border-
 .rows .title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rows .sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
 .rows li.off .title { color: var(--faint); }
+.rows .grip { display: grid; place-items: center; color: var(--faint); cursor: grab; margin: 0 -4px; padding: 4px 2px; }
+.rows .grip:hover { color: var(--text); }
+.rows li.dragging { opacity: .45; }
+.rows li.drop-before { box-shadow: inset 0 2px 0 var(--accent); }
+.rows li.drop-after { box-shadow: inset 0 -2px 0 var(--accent); }
 .err { color: var(--danger); font-size: 13px; margin: 6px 0; overflow-wrap: anywhere; }
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .stat { display: flex; flex-direction: column; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }

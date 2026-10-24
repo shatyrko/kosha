@@ -139,7 +139,7 @@ function render() {
             el("button", { class: front === val ? "on" : "", role: "radio", "aria-checked": String(front === val), onclick: () => { prefs.set("studyFront", val); s.flipped = false; render(); } }, label))),
         toggle("Shuffle", "Mix the order", "studyShuffle", () => { arrange(true); render(); }),
         toggle("Only new", "Skip cards marked “Got it”", "studyOnlyNew", () => { arrange(true); render(); })),
-      el("button", { class: "icon-btn", title: "Close (Esc)", "aria-label": "Close", onclick: close }, icon("close"))),
+      el("button", { class: "icon-btn close-btn", title: "Close (Esc)", "aria-label": "Close", onclick: close }, icon("close"))),
     progress,
     el("div", { class: "stage" },
       el("button", { class: "nav-btn", title: "Previous (←)", "aria-label": "Previous", disabled: s.i === 0, onclick: () => step(-1) }, icon("back", 28)),
@@ -195,7 +195,7 @@ function finished(v) {
   v.replaceChildren(
     el("header", { class: "study-bar" },
       el("div", { class: "grow" }, el("div", { class: "study-title", text: s.title })),
-      el("button", { class: "icon-btn", title: "Close (Esc)", "aria-label": "Close", onclick: close }, icon("close"))),
+      el("button", { class: "icon-btn close-btn", title: "Close (Esc)", "aria-label": "Close", onclick: close }, icon("close"))),
     el("div", { class: "study-done" },
       el("h2", { text: "Done!" }),
       el("p", { text: `${plural(s.list.length, "card", "cards")}: ${s.got.size} got it, ${s.again.size} to repeat.` }),

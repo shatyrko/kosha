@@ -139,7 +139,9 @@ function dictionaries() {
     if (info.has_resources) parts.push("sounds & pictures");
     const toggle = el("input", { type: "checkbox", "aria-label": `Use ${info.name}` });
     toggle.checked = d.enabled;
-    const li = el("li", { class: d.enabled ? "" : "off", title: info.path },
+    const handle = el("span", { class: "grip", title: "Drag to change the order", "aria-hidden": "true" }, icon("grip", 18));
+    const li = el("li", { class: d.enabled ? "" : "off", title: info.path, "data-id": info.id },
+      handle,
       el("label", { class: "switch" }, toggle, el("span")),
       el("div", { class: "grow" }, el("div", { class: "title", text: info.name }), el("div", { class: "sub", text: parts.filter(Boolean).join(" · ") })),
       el("button", { class: "icon-btn", title: "Move up", "aria-label": "Move up", disabled: i === 0, onclick: () => move(info.id, -1) }, icon("up")),
@@ -150,10 +152,55 @@ function dictionaries() {
       await loadLibrary();
       onChange();
     });
+    dragRow(li, handle);
     return li;
   })));
   for (const f of store.failed) out.push(el("div", { class: "err", text: `Can't read ${f.path}: ${f.error}` }));
   return out;
+}
+
+// ── dragging a dictionary to another place in the list ───────
+// Only from the grip, so the switch and the arrows keep working as they are.
+const DRAG = "application/x-kosha-dict";
+
+function dragRow(li, handle) {
+  handle.addEventListener("pointerdown", () => { li.draggable = true; });
+  li.addEventListener("dragstart", (e) => {
+    if (!li.draggable) return;
+    e.dataTransfer.setData(DRAG, li.dataset.id);
+    e.dataTransfer.effectAllowed = "move";
+    li.classList.add("dragging");
+  });
+  li.addEventListener("dragend", () => {
+    li.draggable = false;
+    li.classList.remove("dragging");
+    clearMarks();
+  });
+  li.addEventListener("dragover", (e) => {
+    if (![...e.dataTransfer.types].includes(DRAG)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const r = li.getBoundingClientRect();
+    const after = e.clientY > r.top + r.height / 2;
+    clearMarks();
+    li.classList.add(after ? "drop-after" : "drop-before");
+  });
+  li.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    const moved = e.dataTransfer.getData(DRAG);
+    const after = li.classList.contains("drop-after");
+    clearMarks();
+    if (!moved || moved === li.dataset.id) return;
+    const order = [...li.parentElement.children].map((x) => x.dataset.id).filter((id) => id !== moved);
+    order.splice(order.indexOf(li.dataset.id) + (after ? 1 : 0), 0, moved);
+    await attempt(invoke("set_order", { order }));
+    await loadLibrary();
+    onChange();
+  });
+}
+
+function clearMarks() {
+  document.querySelectorAll(".drop-before, .drop-after").forEach((x) => x.classList.remove("drop-before", "drop-after"));
 }
 
 async function move(id, by) {

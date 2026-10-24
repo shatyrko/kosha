@@ -301,7 +301,7 @@ function renderDetail() {
           el("div", { class: "sub", text: `${c.dict_name} · saved ${new Date(c.added * 1000).toLocaleDateString()}${c.reviews ? ` · studied ${plural(c.reviews, "time", "times")}` : ""}` })),
         el("span", { class: "pos", text: `${detail.index + 1} / ${n}` }),
         el("button", { class: "icon-btn", title: "Next (→)", disabled: detail.index >= n - 1, onclick: () => step(1) }, icon("forward")),
-        el("button", { class: "icon-btn", title: "Close (Esc)", onclick: close }, icon("close"))),
+        el("button", { class: "icon-btn close-btn", title: "Close (Esc)", "aria-label": "Close", onclick: close }, icon("close"))),
       body,
       el("label", { class: "field" }, el("span", { text: "Note" }), note),
       el("div", { class: "card-actions" },
