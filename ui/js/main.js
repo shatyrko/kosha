@@ -10,6 +10,24 @@ import * as settings from "./settings.js";
 
 settings.applyLook();
 
+// scroll bars show while an element scrolls, and fade a moment after it stops (style.css)
+const scrollTimers = new WeakMap();
+document.addEventListener("scroll", (e) => {
+  const t = e.target === document ? document.scrollingElement : e.target;
+  if (!(t instanceof Element)) return;
+  t.classList.add("scrolling");
+  clearTimeout(scrollTimers.get(t));
+  scrollTimers.set(t, setTimeout(() => {
+    t.classList.remove("scrolling");
+    // WebKit keeps showing the old bar until it is rebuilt: drop it for a moment
+    const top = t.scrollTop;
+    t.style.overflow = "hidden";
+    void t.offsetHeight;
+    t.style.overflow = "";
+    t.scrollTop = top;
+  }, 900));
+}, true);
+
 // ── Dictionary / Cards ───────────────────────────────────────
 let mode = prefs.get("mode", "dictionary");
 

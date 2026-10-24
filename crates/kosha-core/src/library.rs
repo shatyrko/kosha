@@ -106,9 +106,9 @@ pub fn find_files(folders: &[PathBuf]) -> Vec<PathBuf> {
                     if seen.insert(c.clone()) {
                         out.push(c);
                     }
-                // resource folders next to a dictionary, and Lingvo's abbreviation bundles
-                // (their explanations are already in the articles), are not searched
-                } else if !n.ends_with(".files") && n != "_abrv" && !n.ends_with(".dictionary") {
+                // resource folders next to a dictionary are not searched (Lingvo for Mac's
+                // "_abrv" folders are: they hold full dictionaries, Universal among them)
+                } else if !n.ends_with(".files") && !n.ends_with(".dictionary") {
                     stack.push(p);
                 }
             } else if is_dictionary(&p) {

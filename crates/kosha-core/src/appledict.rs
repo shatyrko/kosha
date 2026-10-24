@@ -8,6 +8,8 @@
 //!     0x44  blocks:  u32 size (of what follows) · u32 · u32 unpacked size · zlib data
 //!                    each unpacked block is one or more <d:entry …>…</d:entry> (XHTML)
 //! ```
+//! (Lingvo for Mac keeps 32 of its 47 dictionaries in `_abrv` folders, Universal among them:
+//! they are full dictionaries, not abbreviation lists.)
 //! The other files (KeyText.index, EntryID.index: Apple's tries) are not needed: Kosha indexes
 //! the `d:title` of every entry itself, and reads an article by decompressing its block, in place.
 //! Article markup is turned into Kosha's own HTML through a whitelist (nothing else gets through).

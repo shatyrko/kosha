@@ -53,8 +53,8 @@ word as a card, with a copy of its article, so it stays readable even if the dic
   Lingvo for Mac shipped its dictionaries this way): read in place from `Contents/Body.data`,
   one compressed block per article; name and languages from `Info.plist`. Article markup is
   passed through a whitelist (indents, bold/italic, labels with their explanation on hover,
-  secondary text, cross-references, colours). Lingvo's `_abrv` bundles are skipped: their
-  explanations are already in the articles.
+  secondary text, cross-references, colours). (Lingvo for Mac keeps most of its dictionaries,
+  Universal among them, in folders called `_abrv`: they are read like the others.)
 
 Not supported: Lingvo's compiled `.lsd` files (convert them to `.dsl` first).
 

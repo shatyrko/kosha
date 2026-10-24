@@ -113,8 +113,8 @@ function general() {
 function dictionaries() {
   const out = [
     el("h3", { text: "Folders" }),
-    el("p", { class: "hint" }, "Kosha finds ", el("code", { text: ".dsl" }), " and ", el("code", { text: ".dsl.dz" }),
-      " dictionaries in these folders and their sub-folders, and reads them where they are."),
+    el("p", { class: "hint" }, "Kosha finds dictionaries in these folders and their sub-folders (", el("code", { text: ".dsl" }), ", ",
+      el("code", { text: ".dsl.dz" }), ", Apple ", el("code", { text: ".dictionary" }), ") and reads them where they are."),
   ];
   const folders = el("ul", { class: "rows" }, ...store.folders.map((f) =>
     el("li", {},
