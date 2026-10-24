@@ -352,6 +352,17 @@ fn main() {
             online::set_online_settings
         ])
         .setup(move |app| {
+            // the page shows the window once it has drawn itself; if it never does (a broken
+            // page), it is shown anyway after two seconds
+            let handle = app.handle().clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_secs(2));
+                if let Some(w) = handle.get_webview_window("main") {
+                    if !w.is_visible().unwrap_or(true) {
+                        let _ = w.show();
+                    }
+                }
+            });
             reload(app.handle(), &state);
             Ok(())
         })

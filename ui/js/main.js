@@ -10,6 +10,11 @@ import * as settings from "./settings.js";
 
 settings.applyLook();
 
+// the window starts hidden (tauri.conf.json) and is shown here, once the page is styled (theme
+// set in <head>, data comes after), so a cold start never flashes an empty or light window.
+// Not after an animation frame: WebKit hardly draws frames for a hidden window, that took a second.
+window.__TAURI__.window.getCurrentWindow().show();
+
 // scroll bars show while an element scrolls, and fade a moment after it stops (style.css)
 const scrollTimers = new WeakMap();
 document.addEventListener("scroll", (e) => {
