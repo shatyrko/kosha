@@ -37,5 +37,7 @@ Keywords=dictionary;translate;lingvo;dsl;words;
 StartupWMClass=kosha-app
 EOF
 command -v update-desktop-database >/dev/null && update-desktop-database -q "$APPS" || true
-command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache -q -t "$ICONS" 2>/dev/null || true
+# refresh the icon cache only if one exists: creating one would hide icons that other tools add later
+[ -f "$ICONS/icon-theme.cache" ] && command -v gtk-update-icon-cache >/dev/null \
+    && gtk-update-icon-cache -q -t "$ICONS" 2>/dev/null || true
 echo "Installed: $BIN/kosha-app, $BIN/kosha, launcher entry \"Kosha\"."
