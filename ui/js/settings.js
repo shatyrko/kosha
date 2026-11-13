@@ -3,6 +3,7 @@
 import { $, el, icon, invoke, plural, prefs, attempt, toast } from "./util.js";
 import { draggable } from "./drag.js";
 import { loadOnlineSettings, clearHistory, runSearch } from "./dictionary.js";
+import { testGemini } from "./sanskrit.js";
 import { store, on, loadLibrary } from "./store.js";
 
 let section = "general";
@@ -283,8 +284,38 @@ function onlineRows() {
     el("h3", { text: "Google Translate" }),
     toggle("google", "Translate with Google", "Needs a Google Cloud Translation API key (Google Cloud console; billing must be set up, with a monthly free allowance). Without one, the “Google Translate” button opens the website instead."),
     keyRow("google_key", "google", "https://console.cloud.google.com/apis/library/translate.googleapis.com", "Where to get a key"),
+    el("h3", { text: "Gemini (Sanskrit verses)" }),
+    el("p", { class: "hint", text: "In the Sanskrit tab, Google Gemini writes the translation, the commentaries' readings and how to use a verse, from what Kosha computed. "
+      + "The key is free from Google AI Studio (sign in with a Google account → Get API key); the free tier has a daily limit and Google may use free-tier requests to improve its products." }),
+    geminiRow(o),
+    row("Model", (() => {
+      const m = el("input", { type: "text", class: "key", value: o.gemini_model || "gemini-flash-latest", spellcheck: "false" });
+      m.onchange = () => { o.gemini_model = m.value.trim() || "gemini-flash-latest"; saveOnline(); };
+      return m;
+    })(), "“gemini-flash-latest” always means Google's current Flash model, which the free tier includes."),
     el("p", { class: "hint", text: "Keys are kept in Kosha's settings file on this computer only." }),
   ];
+}
+
+function geminiRow(o) {
+  const input = el("input", { type: "password", class: "key", value: o.gemini_key || "", placeholder: "Gemini API key", spellcheck: "false", autocomplete: "off" });
+  input.onchange = () => { o.gemini_key = input.value.trim(); saveOnline(); };
+  const result = el("span", { class: "sub" });
+  return el("div", { class: "setting key-row" },
+    input,
+    el("button", { class: "btn small", text: "Test", onclick: async () => {
+      o.gemini_key = input.value.trim();
+      await saveOnline();
+      result.textContent = "Asking Gemini about सत्यमेव जयते…";
+      try {
+        const r = await testGemini();
+        result.textContent = `Works: “${(r.translation || "").slice(0, 80)}”`;
+      } catch (e) {
+        result.textContent = String(e) === "no-key" ? "Paste the key first." : String(e);
+      }
+    } }),
+    el("button", { class: "link-btn", text: "Get a free key", onclick: () => invoke("plugin:opener|open_url", { url: "https://aistudio.google.com/apikey" }).catch(() => {}) }),
+    result);
 }
 
 // ── Cards ────────────────────────────────────────────────────

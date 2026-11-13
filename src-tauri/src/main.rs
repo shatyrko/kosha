@@ -9,6 +9,7 @@
 mod cards;
 mod history;
 mod online;
+mod sanskrit;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
@@ -82,6 +83,12 @@ fn search(state: State<Shared>, query: String, limit: Option<usize>) -> Vec<Hit>
         return Vec::new();
     };
     guarded(|| lib.search(&query, limit.unwrap_or(60)))
+}
+
+/// Like `guarded`, for commands that can fail: a panic becomes an error message.
+pub(crate) fn guarded_result<T>(f: impl FnOnce() -> Result<T, String>) -> Result<T, String> {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(f))
+        .unwrap_or_else(|_| Err("Kosha could not analyse this (an internal error)".into()))
 }
 
 /// A bug in reading one dictionary must not close the window: commands run where a panic
@@ -349,7 +356,9 @@ fn main() {
             history::history_clear,
             online::online_lookup,
             online::online_settings,
-            online::set_online_settings
+            online::set_online_settings,
+            sanskrit::sanskrit_analyze,
+            sanskrit::sanskrit_explain
         ])
         .setup(move |app| {
             // the page shows the window once it has drawn itself; if it never does (a broken

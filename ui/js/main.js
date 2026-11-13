@@ -7,6 +7,7 @@ import * as dict from "./dictionary.js";
 import * as cards from "./cards.js";
 import * as study from "./study.js";
 import * as settings from "./settings.js";
+import * as sanskrit from "./sanskrit.js";
 
 settings.applyLook();
 
@@ -40,16 +41,18 @@ function setMode(m) {
   mode = m;
   prefs.set("mode", m);
   $("app").dataset.mode = m;
-  $("tab-dict").classList.toggle("on", m === "dictionary");
-  $("tab-cards").classList.toggle("on", m === "cards");
-  $("tab-dict").setAttribute("aria-selected", String(m === "dictionary"));
-  $("tab-cards").setAttribute("aria-selected", String(m === "cards"));
+  for (const [id, mm] of [["tab-dict", "dictionary"], ["tab-cards", "cards"], ["tab-sanskrit", "sanskrit"]]) {
+    $(id).classList.toggle("on", m === mm);
+    $(id).setAttribute("aria-selected", String(m === mm));
+  }
   if (m === "cards") cards.render();
-  (m === "cards" ? $("card-filter") : $("q")).focus();
+  if (m === "sanskrit") sanskrit.focus();
+  else (m === "cards" ? $("card-filter") : $("q")).focus();
 }
 
 $("tab-dict").onclick = () => setMode("dictionary");
 $("tab-cards").onclick = () => setMode("cards");
+$("tab-sanskrit").onclick = () => setMode("sanskrit");
 $("open-settings").onclick = () => settings.open();
 // the window has no title bar: its close button, and Ctrl+Q / Ctrl+W
 const closeWindow = () => window.__TAURI__.window.getCurrentWindow().close();
@@ -71,7 +74,13 @@ $("dict-status").onclick = () => settings.open("dictionaries");
 dict.init({ addFolder: settings.addFolder });
 cards.init({ lookUp: (w) => { setMode("dictionary"); dict.lookUp(w); } });
 settings.init({ onChange: () => dict.rerun() });
+sanskrit.init({ lookUp: (w) => { setMode("dictionary"); dict.lookUp(w); }, openSettings: (s) => settings.open(s) });
 settings.initDom();
+
+/** The text field of the tab on screen. */
+function field() {
+  return { cards: $("card-filter"), sanskrit: $("sa-text") }[mode] || $("q");
+}
 
 // ── keys that work everywhere ────────────────────────────────
 document.addEventListener("keydown", (e) => {
@@ -81,13 +90,14 @@ document.addEventListener("keydown", (e) => {
     if (menuOpen()) { closeMenu(); return; }
     if (settings.isOpen()) { settings.close(); return; }
     if (mode === "dictionary") dict.clearSearch();
-    else if ($("card-filter").value) { $("card-filter").value = ""; cards.render(); }
-    (mode === "cards" ? $("card-filter") : $("q")).focus();
+    else if (mode === "cards" && $("card-filter").value) { $("card-filter").value = ""; cards.render(); }
+    field().focus();
     return;
   }
   if (mod && (e.key === "q" || e.key === "w")) { e.preventDefault(); closeWindow(); return; }
   if (mod && e.key === "1") { e.preventDefault(); setMode("dictionary"); return; }
   if (mod && e.key === "2") { e.preventDefault(); setMode("cards"); return; }
+  if (mod && e.key === "3") { e.preventDefault(); setMode("sanskrit"); return; }
   if (mod && e.key === ",") { e.preventDefault(); settings.isOpen() ? settings.close() : settings.open(); return; }
   if (mod && (e.key === "=" || e.key === "+")) { e.preventDefault(); settings.changeSize(1); return; }
   if (mod && e.key === "-") { e.preventDefault(); settings.changeSize(-1); return; }
@@ -95,7 +105,7 @@ document.addEventListener("keydown", (e) => {
   if (settings.isOpen()) return;
   if (mod && (e.key === "f" || e.key === "l" || e.key === "k")) {
     e.preventDefault();
-    const f = mode === "cards" ? $("card-filter") : $("q");
+    const f = field();
     f.focus();
     f.select();
     return;

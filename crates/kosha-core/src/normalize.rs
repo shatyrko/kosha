@@ -1,6 +1,8 @@
 //! Search keys: what a headword or a query is compared as.
 //!
-//! Lower case, accents and other combining marks removed (so "ё" finds "е", "Café" finds "cafe"),
+//! Lower case, accents and other combining marks on Latin, Greek and Cyrillic letters removed (so
+//! "ё" finds "е", "Café" finds "cafe", "kaśmala" finds "kasmala"); the marks of other scripts stay,
+//! because there they are letters: Devanāgarī vowel signs and the virama (वच् is not वच),
 //! runs of white space collapsed to one space, and a few look-alike characters folded together
 //! (typographic apostrophes and dashes). Applied the same way to headwords when indexing and to
 //! what the user types.
@@ -11,10 +13,17 @@ use unicode_normalization::UnicodeNormalization;
 pub fn key(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut space = false;
+    // the script of the last letter: its marks are dropped only for Latin, Greek and Cyrillic
+    let mut strip = false;
     for c in text.nfd() {
         if is_combining_mark(c) {
+            if strip {
+                continue;
+            }
+            out.push(c);
             continue;
         }
+        strip = matches!(c as u32, 0..=0x024F | 0x1E00..=0x1EFF | 0x0370..=0x03FF | 0x1F00..=0x1FFF | 0x0400..=0x052F);
         let c = match c {
             '\u{2019}' | '\u{2018}' | '\u{02BC}' | '`' | '\u{00B4}' => '\'',
             '\u{2010}'..='\u{2015}' | '\u{2212}' => '-',
@@ -69,6 +78,10 @@ mod tests {
         assert_eq!(key("Ёлка"), "елка");
         assert_eq!(key("rock’n’roll"), "rock'n'roll");
         assert_eq!(key("Straße"), "straße");
+        assert_eq!(key("kaśmalam"), "kasmalam");
+        // Devanāgarī keeps its vowel signs and virama: these are different words
+        assert_ne!(key("वच्"), key("वच"));
+        assert_ne!(key("काम"), key("कम"));
     }
 
     #[test]

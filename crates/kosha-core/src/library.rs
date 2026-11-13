@@ -34,6 +34,10 @@ pub struct Online {
     pub deepl_key: String,
     /// Google Cloud Translation API key
     pub google_key: String,
+    /// Google Gemini (AI Studio) API key: explains Sanskrit verses
+    pub gemini_key: String,
+    /// the Gemini model ("gemini-flash-latest": the current Flash, on the free tier)
+    pub gemini_model: String,
     /// your language and the one you learn (ISO codes): translations go from one to the other
     pub native: String,
     pub learning: String,
@@ -47,6 +51,8 @@ impl Default for Online {
             deepl: true,
             deepl_key: String::new(),
             google_key: String::new(),
+            gemini_key: String::new(),
+            gemini_model: "gemini-flash-latest".into(),
             native: "ru".into(),
             learning: "en".into(),
         }
@@ -115,7 +121,8 @@ fn is_dictionary(p: &Path) -> bool {
         .file_name()
         .map(|n| n.to_string_lossy().to_lowercase())
         .unwrap_or_default();
-    (n.ends_with(".dsl") || n.ends_with(".dsl.dz")) && !n.contains("_abrv.dsl")
+    ((n.ends_with(".dsl") || n.ends_with(".dsl.dz")) && !n.contains("_abrv.dsl"))
+        || n.ends_with(".ifo")
 }
 
 /// Dictionary files in these folders and their sub-folders.

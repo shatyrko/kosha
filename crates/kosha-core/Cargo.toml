@@ -13,6 +13,9 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 encoding_rs = "0.8"
 unicode-normalization = "0.1"
 dirs = "6"
+vidyut-lipi = "0.2"
+# from the repository: the 0.1.0 release prints debug lines to stderr on every match
+vidyut-chandas = { git = "https://github.com/ambuda-org/vidyut", rev = "2a802d0b6cfb" }
 
 [dev-dependencies]
 tempfile = "3"

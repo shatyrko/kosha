@@ -1,8 +1,8 @@
 # Kosha
 
 A modern dictionary app for Linux and macOS that reads your dictionaries **where they are**:
-ABBYY Lingvo DSL files (plain `.dsl` or compressed `.dsl.dz`) and Apple Dictionary bundles
-(`.dictionary`) are opened in place, never converted or copied. Kosha scans a file once to index its headwords, keeps that small index in
+ABBYY Lingvo DSL files (plain `.dsl` or compressed `.dsl.dz`), StarDict dictionaries (`.ifo`)
+and Apple Dictionary bundles (`.dictionary`) are opened in place, never converted or copied. Kosha scans a file once to index its headwords, keeps that small index in
 its cache folder, and reads an article straight from the original file when you look a word up.
 
 Status: early, but usable: the app window, the engine and the command-line tool work on Linux;
@@ -37,6 +37,28 @@ the macOS build is set up but not tried yet.
   Wikipedia in the browser, no key needed. For phrases no dictionary has, the online results are
   what you get.
 
+## Sanskrit verses
+
+The **Sanskrit** tab (Ctrl+3) analyses a verse pasted in Devanāgarī or IAST (or Harvard-Kyoto,
+ITRANS, SLP1…). What is computed comes first, and needs no internet:
+
+- **Text**: every line in Devanāgarī and IAST ([vidyut-lipi](https://github.com/ambuda-org/vidyut)).
+- **Meter**: the syllables marked light or heavy; the fixed meters of the Vṛttaratnākara and
+  the mātrā meters (vidyut-chandas), and the anuṣṭubh śloka by its rules (pathyā, vipulās).
+- **Words**: joined words split into the fewest dictionary words, common case endings taken
+  off, each looked up in your Sanskrit dictionaries (up to three entries per dictionary; click
+  a form to open its full entry). Splits and dictionary forms are found by rules, not by a full
+  grammar, and are labelled so.
+
+Then **Google Gemini** (your free key from Google AI Studio, Settings → Online) writes the
+literal and natural translation, the sense of each word here, the readings of the commentaries
+and how to use the verse, from the computed facts and told to keep to them. It is labelled as AI.
+
+Sanskrit dictionaries that work well: Monier-Williams, Apte, Macdonell and Whitney's roots from
+the [Cologne Digital Sanskrit Dictionaries](https://www.sanskrit-lexicon.uni-koeln.de/), in
+StarDict form from [indic-dict](https://github.com/indic-dict/stardict-sanskrit) (`sa-head/en-entries/tars`).
+Command line: `kosha sanskrit "VERSE"`.
+
 ## Word cards
 
 For learning a language: **Save** on an article (or Ctrl+S, into the folder used last) keeps the
@@ -64,6 +86,10 @@ word as a card, with a copy of its article, so it stays readable even if the dic
   cross-references `[ref]` / `<<...>>`, links, `~` for the headword. Badly nested tags are repaired.
 - Sounds and pictures `[s]...[/s]` from `<name>.dsl.files.zip`, `<name>.files.zip` or a
   `<name>.dsl.files` folder next to the dictionary.
+
+- **StarDict** (`.ifo` + `.idx[.gz]` + `.dict[.dz]`, optional `.syn` with more search forms):
+  HTML, plain-text, Pango and XDXF articles; 32- and 64-bit offsets; line breaks of the printed
+  page joined (Apte), sense breaks kept.
 
 - **Apple Dictionary bundles** (`X.dictionary`, the format of macOS's Dictionary app; ABBYY
   Lingvo for Mac shipped its dictionaries this way): read in place from `Contents/Body.data`,

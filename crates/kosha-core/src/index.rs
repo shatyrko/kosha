@@ -12,10 +12,12 @@ use crate::dsl::{self, Header};
 use crate::headword;
 use crate::normalize;
 use crate::source::Source;
+use crate::stardict;
 use crate::text::Encoding;
 
-/// v2: the dictionary format is saved too (v1 indexes are rebuilt).
-const MAGIC: &[u8; 8] = b"KOSHAIX\x02";
+/// v2: the dictionary format is saved too; v3: search keys keep the marks of non-Latin scripts
+/// (older indexes are rebuilt).
+const MAGIC: &[u8; 8] = b"KOSHAIX\x03";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Format {
@@ -24,6 +26,8 @@ pub enum Format {
     /// Apple Dictionary bundle: `articles` are blocks of Body.data; the top 16 bits of the
     /// offset are the entry's number inside its block (almost always 0)
     AppleDict,
+    /// StarDict (`.ifo`): `articles` are the ranges of the `.dict[.dz]` file named in `.idx`
+    StarDict,
 }
 
 pub const APPLE_OFFSET_MASK: u64 = (1 << 48) - 1;
@@ -32,6 +36,8 @@ pub const APPLE_OFFSET_MASK: u64 = (1 << 48) - 1;
 pub fn data_file(path: &Path) -> std::path::PathBuf {
     if appledict::is_bundle(path) {
         appledict::body_path(path)
+    } else if stardict::is_ifo(path) {
+        stardict::dict_path(path)
     } else {
         path.to_path_buf()
     }
@@ -57,6 +63,9 @@ pub struct Index {
     pub words: Vec<Word>,
     /// size and modification time (seconds) of the file the index was built from
     pub stamp: (u64, u64),
+    /// StarDict: the `.idx` word of every article (its headword; the `.syn` forms are only
+    /// searched). Empty for the other formats, whose articles name their headwords themselves.
+    pub titles: Vec<String>,
 }
 
 fn sort_words(words: &mut Vec<Word>) {
@@ -83,6 +92,9 @@ impl Index {
     pub fn build(path: &Path) -> io::Result<Index> {
         if appledict::is_bundle(path) {
             return Self::build_apple(path);
+        }
+        if stardict::is_ifo(path) {
+            return Self::build_stardict(path);
         }
         let stamp = file_stamp(path)?;
         let mut head = [0u8; 4096];
@@ -127,6 +139,51 @@ impl Index {
             articles,
             words,
             stamp,
+            titles: Vec::new(),
+        })
+    }
+
+    /// A StarDict dictionary: the words of `.idx` and the extra forms of `.syn`, as they are.
+    fn build_stardict(ifo: &Path) -> io::Result<Index> {
+        let info = stardict::read_ifo(ifo)?;
+        let stamp = file_stamp(&stardict::dict_path(ifo))?;
+        let entries = stardict::read_idx(ifo, &info)?;
+        let mut articles = Vec::with_capacity(entries.len());
+        let mut words = Vec::with_capacity(entries.len() * 2);
+        let mut titles = Vec::with_capacity(entries.len());
+        for (i, (word, off, size)) in entries.into_iter().enumerate() {
+            articles.push((off, size));
+            let key = normalize::key(&word);
+            if !key.is_empty() {
+                words.push(Word {
+                    key,
+                    display: word.clone(),
+                    article: i as u32,
+                });
+            }
+            titles.push(word);
+        }
+        for (word, article) in stardict::read_syn(ifo)? {
+            if (article as usize) < articles.len() {
+                let key = normalize::key(&word);
+                if !key.is_empty() {
+                    words.push(Word {
+                        key,
+                        display: word,
+                        article,
+                    });
+                }
+            }
+        }
+        sort_words(&mut words);
+        Ok(Index {
+            format: Format::StarDict,
+            header: stardict::header(ifo, &info),
+            encoding: Encoding::Utf8,
+            articles,
+            words,
+            stamp,
+            titles,
         })
     }
 
@@ -160,6 +217,7 @@ impl Index {
             articles,
             words,
             stamp,
+            titles: Vec::new(),
         })
     }
 
@@ -186,6 +244,7 @@ impl Index {
             w.write_all(&[match self.format {
                 Format::Dsl => 0,
                 Format::AppleDict => 1,
+                Format::StarDict => 2,
             }])?;
             put_u64(&mut w, self.stamp.0)?;
             put_u64(&mut w, self.stamp.1)?;
@@ -227,6 +286,10 @@ impl Index {
                 }
                 w.write_all(&wd.article.to_le_bytes())?;
             }
+            put_u64(&mut w, self.titles.len() as u64)?;
+            for t in &self.titles {
+                put_str(&mut w, t)?;
+            }
             w.flush()?;
         }
         fs::rename(tmp, path)
@@ -249,6 +312,7 @@ impl Index {
         let format = match f[0] {
             0 => Format::Dsl,
             1 => Format::AppleDict,
+            2 => Format::StarDict,
             _ => return Ok(None),
         };
         if (get_u64(&mut r)?, get_u64(&mut r)?) != stamp {
@@ -299,6 +363,10 @@ impl Index {
                 article: u32::from_le_bytes(a),
             });
         }
+        let n = get_u64(&mut r)? as usize;
+        let titles = (0..n)
+            .map(|_| get_str(&mut r))
+            .collect::<io::Result<Vec<_>>>()?;
         Ok(Some(Index {
             format,
             header,
@@ -306,6 +374,7 @@ impl Index {
             articles,
             words,
             stamp,
+            titles,
         }))
     }
 }

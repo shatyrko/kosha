@@ -19,6 +19,10 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10A1.5 1.5 0 0 1 18.5 6v12A1.5 1.5 0 0 1 17 19.5H7A1.5 1.5 0 0 1 5.5 18V6A1.5 1.5 0 0 1 7 4.5zM9 9h6M9 12.5h6M9 16h3.5"/></svg>
           Cards <span id="cards-badge" class="badge"></span>
         </button>
+        <button id="tab-sanskrit" class="tab" role="tab" aria-selected="false" title="Sanskrit verse analysis (Ctrl+3)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M8 6v3a4 4 0 0 0 8 0V6M12 13v7M8 20h8"/></svg>
+          Sanskrit
+        </button>
       </div>
 
       <!-- dictionary: search and headwords -->
@@ -46,6 +50,17 @@
             New folder
           </button>
         </div>
+      </div>
+
+      <!-- Sanskrit: recent verses -->
+      <div class="side-sanskrit">
+        <div class="sa-side-top">
+          <button id="sa-example" class="text-btn" title="Bhagavad Gītā 2.2">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+            Try an example verse
+          </button>
+        </div>
+        <ul id="sa-recent" aria-label="Recent verses"></ul>
       </div>
 
       <div id="side-foot">
@@ -92,6 +107,26 @@
         </button>
       </header>
       <div id="card-grid"></div>
+    </main>
+
+    <!-- Sanskrit: a verse analysed -->
+    <main id="sanskrit-main" class="main-sanskrit">
+      <header class="cards-bar" data-tauri-drag-region>
+        <div class="grow" data-tauri-drag-region>
+          <h1 data-tauri-drag-region>Sanskrit verse</h1>
+          <div class="sub" data-tauri-drag-region>Text, meter and words from your dictionaries; translation and commentary by Gemini</div>
+        </div>
+      </header>
+      <div id="sa-body">
+        <div class="article sa-input">
+          <textarea id="sa-text" rows="4" spellcheck="false" placeholder="Paste a verse in Devanāgarī or IAST (one half-verse per line, or lines separated by । or |)"></textarea>
+          <div class="row-actions">
+            <button id="sa-go" class="btn primary">Analyse</button>
+            <span class="sub">Ctrl+Enter</span>
+          </div>
+        </div>
+        <div id="sa-result"></div>
+      </div>
     </main>
 
     <button id="win-close" title="Close Kosha (Ctrl+Q)" aria-label="Close Kosha">

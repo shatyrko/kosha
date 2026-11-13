@@ -13,6 +13,7 @@ usage:
   kosha lookup WORD        every dictionary's article, as text
   kosha search TEXT        headwords starting with TEXT (similar ones if few)
   kosha dicts              the dictionaries found, with their size
+  kosha sanskrit VERSE     a Sanskrit verse: transliteration, meter, words in the dictionaries
   kosha folders            the folders searched for dictionaries
   kosha folders add DIR    search DIR (and its sub-folders) too
   kosha folders remove DIR
@@ -130,6 +131,48 @@ fn run() -> Result<(), String> {
             } else {
                 for h in hits {
                     println!("{}{}", h.word, if h.fuzzy { "  (similar)" } else { "" });
+                }
+            }
+        }
+        "sanskrit" | "sa" => {
+            if rest.trim().is_empty() {
+                return Err(
+                    "sanskrit: which verse? (Devanāgarī or IAST; lines with \\n or |)".into(),
+                );
+            }
+            let lib = open(&o);
+            let a = kosha_core::sanskrit::Analyzer::new()
+                .analyze(&rest.replace("\\n", "\n"), Some(&lib));
+            if o.json {
+                println!("{}", serde_json::to_string(&a).map_err(|e| e.to_string())?);
+            } else {
+                println!("Script: {}", a.scheme);
+                for (d, i) in a.deva.iter().zip(&a.iast) {
+                    println!("  {d}\n  {i}");
+                }
+                if let Some(m) = &a.meter {
+                    println!("\nMeter: {} ({})", m.name, m.note);
+                    for p in &m.padas {
+                        let marks: String =
+                            p.iter().map(|s| if s.heavy { '—' } else { '◡' }).collect();
+                        let syl: Vec<&str> = p.iter().map(|s| s.text.as_str()).collect();
+                        println!("  {marks}  {}", syl.join("·"));
+                    }
+                }
+                println!("\nWords:");
+                for w in &a.words {
+                    if w.parts.is_empty() {
+                        println!("  {:<22} (not found)", w.word);
+                        continue;
+                    }
+                    let forms: Vec<String> = w.parts.iter().map(|p| p.iast.clone()).collect();
+                    println!("  {:<22} {} [{}]", w.word, forms.join(" + "), w.how);
+                    for p in &w.parts {
+                        if let Some(m) = p.meanings.first() {
+                            let g: String = m.gloss.chars().take(110).collect();
+                            println!("      {}: {g}", p.iast);
+                        }
+                    }
                 }
             }
         }

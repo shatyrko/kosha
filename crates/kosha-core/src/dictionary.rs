@@ -17,6 +17,7 @@ use crate::headword;
 use crate::index::{data_file, file_stamp, Format, Index, APPLE_OFFSET_MASK};
 use crate::render::{self, RenderCtx};
 use crate::source::{without_dz, Source};
+use crate::stardict;
 use crate::text::Encoding;
 
 pub struct Dictionary {
@@ -26,6 +27,8 @@ pub struct Dictionary {
     source: Source,
     abbreviations: HashMap<String, String>,
     resources: Resources,
+    /// a StarDict dictionary's .ifo (how its articles are typed)
+    ifo: Option<stardict::Ifo>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -122,6 +125,11 @@ impl Dictionary {
             // Apple bundles carry their label explanations inside the articles
             (HashMap::new(), Resources::None)
         };
+        let ifo = if index.format == Format::StarDict {
+            Some(stardict::read_ifo(&path)?)
+        } else {
+            None
+        };
         Ok(Dictionary {
             id,
             path,
@@ -129,6 +137,7 @@ impl Dictionary {
             source,
             abbreviations,
             resources,
+            ifo,
         })
     }
 
@@ -171,6 +180,23 @@ impl Dictionary {
     ) -> io::Result<Article> {
         if self.index.format == Format::AppleDict {
             return self.apple_article(article);
+        }
+        if let Some(ifo) = &self.ifo {
+            let (off, len) = self.index.articles[article as usize];
+            let data = self.source.read_at(off, len as usize)?;
+            let headword = self
+                .index
+                .titles
+                .get(article as usize)
+                .cloned()
+                .unwrap_or_default();
+            return Ok(Article {
+                dict_id: self.id.clone(),
+                dict_name: self.name(),
+                headwords: vec![headword],
+                html: stardict::article_html(ifo, &data),
+                text: stardict::article_text(ifo, &data),
+            });
         }
         let text = self.article_source(article)?;
         let (heads, body) = dsl::split_article(&text);

@@ -14,7 +14,9 @@ pub mod index;
 pub mod library;
 pub mod normalize;
 pub mod render;
+pub mod sanskrit;
 pub mod source;
+pub mod stardict;
 pub mod text;
 
 pub use dictionary::{Article, DictInfo, Dictionary};
